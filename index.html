@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>컴활 2급 실기 · 함수 연습소</title>
+<style>
+  :root{
+    --bg:#0f1220; --card:#1f2440; --card2:#262c4e; --line:#333a63;
+    --tx:#eef1ff; --tx2:#a6adcf; --pri:#4f7cff; --pri2:#6f95ff;
+    --ok:#27c093; --no:#ff5a6a; --warn:#ffb020; --gold:#ffd23f;
+    --grid:#141a33; --gridhead:#2a3157; --target:#3a2f13;
+    --sh:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,'Malgun Gothic',sans-serif;
+    background:radial-gradient(1000px 600px at 70% -10%,#20264a 0,transparent 60%),var(--bg);
+    color:var(--tx);min-height:100vh}
+  .wrap{max-width:860px;margin:0 auto;padding:16px 16px 48px}
+  .hidden{display:none!important}
+  h1{font-size:22px;margin:6px 0}
+  h2{font-size:15px;color:var(--tx2);font-weight:600;margin:14px 2px 8px}
+  .btn{background:var(--pri);color:#fff;border:none;border-radius:11px;padding:12px 16px;
+    font-size:15px;font-weight:700;cursor:pointer;transition:.12s}
+  .btn:hover{background:var(--pri2)} .btn:active{transform:scale(.97)}
+  .btn.sec{background:var(--card2);color:var(--tx)}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--tx2)}
+  .btn.green{background:#16a34a}
+  .btn:disabled{opacity:.5;cursor:default}
+  .row{display:flex;gap:10px;align-items:center}
+
+  .hero{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:var(--sh)}
+  .badge{display:inline-block;background:linear-gradient(135deg,var(--pri),#9d6bff);
+    color:#fff;font-size:12px;padding:3px 10px;border-radius:8px;font-weight:700;margin-bottom:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:8px 14px;
+    font-size:13px;cursor:pointer;transition:.12s}
+  .chip:hover{border-color:var(--pri)} .chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+  .note{font-size:13px;color:var(--tx2);line-height:1.7;background:var(--card2);border-radius:12px;
+    padding:14px 16px;margin-top:12px;border-left:4px solid var(--ok)}
+
+  /* 진행 상단 */
+  .hud{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .hud .chip2{font-size:13px;font-weight:700;background:var(--card);border:1px solid var(--line);
+    padding:7px 12px;border-radius:10px}
+  .pgbar{flex:1;height:8px;background:var(--card2);border-radius:6px;overflow:hidden}
+  .pgbar>i{display:block;height:100%;background:linear-gradient(90deg,var(--pri),#9d6bff);width:0;transition:.3s}
+  .spacer{flex:1}
+
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--sh)}
+  .cattag{font-size:12px;font-weight:700;color:var(--pri2)}
+  .ptitle{font-size:18px;font-weight:800;margin:2px 0 10px}
+  .prompt{font-size:15px;line-height:1.6;background:var(--card2);border-radius:10px;padding:13px 15px;margin-bottom:14px}
+  .prompt b{color:var(--gold);font-weight:700}
+
+  /* 그리드 */
+  .gridwrap{overflow-x:auto;margin-bottom:14px;border-radius:10px;border:1px solid var(--line)}
+  table.sheet{border-collapse:collapse;font-size:13px;width:100%;min-width:max-content}
+  table.sheet th,table.sheet td{border:1px solid var(--line);padding:7px 10px;text-align:center;white-space:nowrap}
+  table.sheet th{background:var(--gridhead);color:var(--tx2);font-weight:700;font-size:12px}
+  table.sheet td.rowh{background:var(--gridhead);color:var(--tx2);font-weight:700}
+  table.sheet td{background:var(--grid)}
+  table.sheet td.tcell{background:var(--target);outline:2px solid var(--gold);outline-offset:-2px;
+    font-weight:800;color:var(--gold);position:relative}
+  table.sheet td.num{text-align:right}
+
+  /* 수식 입력줄 */
+  .fxbar{display:flex;align-items:stretch;gap:0;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#12162b}
+  .fxbar:focus-within{border-color:var(--pri)}
+  .fxlabel{background:var(--card2);padding:0 14px;display:flex;align-items:center;font-style:italic;
+    font-weight:800;color:var(--tx2);font-size:15px;border-right:1px solid var(--line)}
+  .fxbar input{flex:1;background:none;border:none;outline:none;color:var(--tx);
+    font-family:'Consolas','D2Coding',monospace;font-size:16px;padding:13px 12px}
+  .toolbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+  .feedback{margin-top:14px;padding:14px 16px;border-radius:12px;font-size:14px;line-height:1.6;animation:pop .2s}
+  .feedback.ok{background:rgba(39,192,147,.14);border-left:4px solid var(--ok)}
+  .feedback.no{background:rgba(255,90,106,.14);border-left:4px solid var(--no)}
+  .feedback .ansline{font-family:'Consolas',monospace;background:#12162b;padding:8px 10px;border-radius:8px;
+    margin-top:8px;font-size:14px;color:var(--gold);word-break:break-all}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .result{text-align:center}
+  .result .big{font-size:56px}
+  .result .score{font-size:40px;font-weight:900}
+  .rbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+  .footer{text-align:center;color:var(--tx2);font-size:12px;margin-top:26px;line-height:1.6}
+  kbd{background:var(--card2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- 시작 -->
+  <section id="start">
+    <div class="hero">
+      <div class="badge">컴퓨터활용능력 2급 실기</div>
+      <h1>함수 연습소 · 스프레드시트</h1>
+      <div style="color:var(--tx2);font-size:14px">실제 엑셀처럼 <b style="color:var(--tx)">함수를 직접 입력</b>하면, 진짜로 계산해서 채점해요.</div>
+      <h2>연습 범위 선택</h2>
+      <div class="chips" id="catChips"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" style="flex:1" onclick="startPractice()">연습 시작 ▶</button>
+      </div>
+      <div class="note">
+        <b>사용법</b> · 노란색 셀에 들어갈 <b>수식</b>을 아래 입력줄에 <kbd>=</kbd>로 시작해 입력하고 <kbd>Enter</kbd>.<br>
+        서로 다른 수식이어도 <b>결과값이 맞으면 정답</b>으로 인정됩니다.
+      </div>
+    </div>
+    <div class="footer">문제는 계속 추가됩니다 · 계산작업(함수) 중심</div>
+  </section>
+
+  <!-- 연습 -->
+  <section id="practice" class="hidden">
+    <div class="hud">
+      <button class="btn ghost" style="padding:8px 12px" onclick="quitPractice()">← 나가기</button>
+      <div class="chip2" id="progLabel">1 / 14</div>
+      <div class="pgbar"><i id="pgFill"></i></div>
+      <div class="chip2" id="scoreLabel">0점</div>
+    </div>
+    <div class="pcard">
+      <div class="cattag" id="catTag"></div>
+      <div class="ptitle" id="pTitle"></div>
+      <div class="prompt" id="pPrompt"></div>
+      <div class="gridwrap"><table class="sheet" id="sheet"></table></div>
+      <div class="fxbar">
+        <div class="fxlabel">fx</div>
+        <input id="fx" type="text" placeholder="=  여기에 수식 입력 후 Enter" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="toolbtns">
+        <button class="btn green" onclick="checkAnswer()">확인</button>
+        <button class="btn sec" onclick="showHint()">💡 힌트</button>
+        <button class="btn ghost" onclick="showModel()">모범답안</button>
+        <button class="btn ghost" onclick="skipProblem()">건너뛰기 →</button>
+      </div>
+      <div id="fb"></div>
+    </div>
+  </section>
+
+  <!-- 결과 -->
+  <section id="result" class="hidden"></section>
+</div>
+
+<script src="engine.js"></script>
+<script src="data/problems.js"></script>
+<script src="https://hongyul67-cpu.github.io/links/collector.js"
+        data-tool="컴활2급 실기-스프레드시트"
+        data-classes="1,2,3,4,5,6,7,8,9,10"
+        data-max-num="40"></script>
+<script src="app.js"></script>
+</body>
+</html>
