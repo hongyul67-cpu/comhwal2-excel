@@ -80,9 +80,39 @@
     margin-top:8px;font-size:14px;color:var(--gold);word-break:break-all}
   @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
+  /* 모드 선택 */
+  .modes2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 4px}
+  @media(max-width:520px){.modes2{grid-template-columns:1fr}}
+  .mcard{background:var(--card2);border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;
+    cursor:pointer;transition:.12s;display:flex;flex-direction:column;gap:4px}
+  .mcard:hover{transform:translateY(-2px)}
+  .mcard.on{border-color:var(--pri);box-shadow:0 0 0 2px rgba(79,124,255,.3)}
+  .mcard b{font-size:14.5px} .mcard span{font-size:12px;color:var(--tx2);line-height:1.45}
+  .exopts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:520px){.exopts{grid-template-columns:1fr}}
+  .exbtn{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:13px 14px;
+    cursor:pointer;color:var(--tx);text-align:left;display:flex;flex-direction:column;gap:3px;transition:.12s}
+  .exbtn:hover{border-color:var(--ok);transform:translateY(-2px)}
+  .exbtn b{font-size:14px} .exbtn span{font-size:11.5px;color:var(--tx2);line-height:1.45}
+  #timerLabel{font-variant-numeric:tabular-nums}
+  #timerLabel.warn{color:var(--no);border-color:var(--no);animation:tblink 1s steps(2,start) infinite}
+  @keyframes tblink{50%{opacity:.55}}
+
   .result{text-align:center}
   .result .big{font-size:56px}
   .result .score{font-size:40px;font-weight:900}
+  .verdict{font-size:40px;font-weight:900;margin:4px 0}
+  .verdict.pass{color:var(--ok)} .verdict.fail{color:var(--no)}
+  .rvitem{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;
+    margin-bottom:12px;text-align:left}
+  .rvitem .rvmeta{font-size:12px;color:var(--tx2);font-weight:700;margin-bottom:5px}
+  .rvitem .rvtitle{font-size:15.5px;font-weight:800;margin-bottom:7px}
+  .rvitem .rvprompt{font-size:13.5px;color:var(--tx2);line-height:1.6;margin-bottom:10px}
+  .rvitem .rvprompt b{color:var(--gold)}
+  .fxline{font-family:'Consolas',monospace;background:#12162b;border:1px solid var(--line);
+    padding:8px 10px;border-radius:8px;margin-top:6px;font-size:13.5px;word-break:break-all}
+  .fxline.mine{color:var(--tx)} .fxline.model{color:var(--gold)}
+  .fxlab{font-size:11.5px;color:var(--tx2);font-weight:700;margin-top:9px}
   .rbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
   .footer{text-align:center;color:var(--tx2);font-size:12px;margin-top:26px;line-height:1.6}
   kbd{background:var(--card2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px}
@@ -96,14 +126,35 @@
       <div class="badge">컴퓨터활용능력 2급 실기</div>
       <h1>함수 연습소 · 스프레드시트</h1>
       <div style="color:var(--tx2);font-size:14px">실제 엑셀처럼 <b style="color:var(--tx)">함수를 직접 입력</b>하면, 진짜로 계산해서 채점해요.</div>
-      <h2>연습 범위 선택</h2>
-      <div class="chips" id="catChips"></div>
-      <div class="row" style="margin-top:14px">
-        <button class="btn" style="flex:1" onclick="startPractice()">연습 시작 ▶</button>
+      <h2>모드 선택</h2>
+      <div class="modes2">
+        <div class="mcard on" id="mcPractice" onclick="pickMode('practice')">
+          <b>📚 연습 모드</b><span>범위를 골라 한 문제씩 · 바로 채점 · 힌트·모범답안 볼 수 있어요</span>
+        </div>
+        <div class="mcard" id="mcExam" onclick="pickMode('exam')">
+          <b>⏱️ 실전 모드</b><span>제한 시간 · 힌트 없이 · <b style="color:var(--ok)">70점 이상 합격</b> · 풀이는 제출 후</span>
+        </div>
       </div>
-      <div class="note">
-        <b>사용법</b> · 노란색 셀에 들어갈 <b>수식</b>을 아래 입력줄에 <kbd>=</kbd>로 시작해 입력하고 <kbd>Enter</kbd>.<br>
-        서로 다른 수식이어도 <b>결과값이 맞으면 정답</b>으로 인정됩니다.
+
+      <div id="practicePanel">
+        <h2>연습 범위 선택</h2>
+        <div class="chips" id="catChips"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn" style="flex:1" onclick="startPractice()">연습 시작 ▶</button>
+        </div>
+        <div class="note">
+          <b>사용법</b> · 노란색 셀에 들어갈 <b>수식</b>을 아래 입력줄에 <kbd>=</kbd>로 시작해 입력하고 <kbd>Enter</kbd>.<br>
+          서로 다른 수식이어도 <b>결과값이 맞으면 정답</b>으로 인정됩니다.
+        </div>
+      </div>
+
+      <div id="examPanel" class="hidden">
+        <h2>실전 시험 선택</h2>
+        <div class="exopts" id="examOpts"></div>
+        <div class="note" style="border-left-color:var(--warn)">
+          <b>실전 모드 규칙</b> · 실제 시험처럼 <b>힌트·모범답안 없이</b> 풀고, 정답 여부도 알려주지 않아요.<br>
+          제한 시간이 끝나면 자동 제출되고, 그때 <b>점수 · 합격/불합격 · 전체 풀이</b>가 나옵니다.
+        </div>
       </div>
     </div>
     <div class="footer">문제는 계속 추가됩니다 · 계산작업(함수) 중심</div>
@@ -115,6 +166,7 @@
       <button class="btn ghost" style="padding:8px 12px" onclick="quitPractice()">← 나가기</button>
       <div class="chip2" id="progLabel">1 / 14</div>
       <div class="pgbar"><i id="pgFill"></i></div>
+      <div class="chip2 hidden" id="timerLabel">⏱ 40:00</div>
       <div class="chip2" id="scoreLabel">0점</div>
     </div>
     <div class="pcard">
@@ -126,12 +178,7 @@
         <div class="fxlabel">fx</div>
         <input id="fx" type="text" placeholder="=  여기에 수식 입력 후 Enter" autocomplete="off" autocapitalize="off" spellcheck="false">
       </div>
-      <div class="toolbtns">
-        <button class="btn green" onclick="checkAnswer()">확인</button>
-        <button class="btn sec" onclick="showHint()">💡 힌트</button>
-        <button class="btn ghost" onclick="showModel()">모범답안</button>
-        <button class="btn ghost" onclick="skipProblem()">건너뛰기 →</button>
-      </div>
+      <div class="toolbtns" id="toolBtns"></div>
       <div id="fb"></div>
     </div>
   </section>
