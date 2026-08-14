@@ -126,6 +126,7 @@
       <div class="badge">컴퓨터활용능력 2급 실기</div>
       <h1>함수 연습소 · 스프레드시트</h1>
       <div style="color:var(--tx2);font-size:14px">실제 엑셀처럼 <b style="color:var(--tx)">함수를 직접 입력</b>하면, 진짜로 계산해서 채점해요.</div>
+      <div id="rankCard" style="margin-top:14px"></div>
       <h2>모드 선택</h2>
       <div class="modes2">
         <div class="mcard on" id="mcPractice" onclick="pickMode('practice')">
@@ -189,6 +190,8 @@
 
 <script src="engine.js"></script>
 <script src="data/problems.js"></script>
+<!-- 공용 계급·랭크포인트 (개념게임과 같은 저장소를 써서 계급이 함께 오름) -->
+<script src="../comhwal2/rank.js"></script>
 <script src="https://hongyul67-cpu.github.io/links/collector.js"
         data-tool="컴활2급 실기-스프레드시트"
         data-classes="1,2,3,4,5,6,7,8,9,10"

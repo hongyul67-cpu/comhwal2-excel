@@ -31,7 +31,8 @@ function categories() {
 }
 function renderStart() {
   clearExamTimer();
-  state.exam = null;
+  state.exam = null; state.rp = null; state.durationSec = 0;
+  renderRank();
   var tl = $('timerLabel'); if (tl) { tl.classList.add('hidden'); tl.classList.remove('warn'); }
   hide('practice'); hide('result'); show('start');
   var box = $('catChips'); box.innerHTML = '';
@@ -178,8 +179,18 @@ function finish(msg, cls, p) {
 }
 function nextProblem() {
   if (state.idx < state.queue.length - 1) { state.idx++; renderProblem(); }
-  else showResult();
+  else finishPractice();
 }
+function finishPractice() {
+  state.durationSec = Math.round((Date.now() - state.startTime) / 1000);
+  // 연습도 RP 적립 (정답 +3 / 오답 -1) — 개념게임과 같은 계급이 오른다
+  state.rp = hasRank() ? CH2Rank.award(state.correct, state.queue.length - state.correct, 1) : null;
+  showResult();
+}
+function hasRank() { return !!window.CH2Rank; }
+function rankBanner(r) { return hasRank() ? CH2Rank.bannerHtml(r) : ''; }
+function rankRegister() { return hasRank() ? CH2Rank.registerBtnHtml() : ''; }
+function renderRank() { if (hasRank()) CH2Rank.renderCard('rankCard'); }
 function skipProblem() {
   if (state.answered) { nextProblem(); return; }
   state.done++;
@@ -203,12 +214,14 @@ function showResult() {
   var pct = Math.round(c / n * 100);
   var emoji = pct >= 90 ? '🏆' : pct >= 70 ? '🎉' : pct >= 40 ? '👍' : '💪';
   var msg = pct >= 90 ? '완벽해요!' : pct >= 70 ? '잘했어요!' : pct >= 40 ? '조금만 더!' : '연습이 필요해요';
-  state.durationSec = Math.round((Date.now() - state.startTime) / 1000);
+  if (!state.durationSec) state.durationSec = Math.round((Date.now() - state.startTime) / 1000);
   $('result').innerHTML =
     '<div class="result pcard">' +
       '<div class="big">' + emoji + '</div>' +
       '<div class="score">' + c + ' / ' + n + '</div>' +
       '<div style="color:var(--tx2);margin-top:4px">정답률 ' + pct + '% · ' + msg + '</div>' +
+      rankBanner(state.rp) +
+      rankRegister() +
       submitBtnHtml() +
       '<div class="rbtns">' +
         '<button class="btn sec" onclick="renderStart()">범위 다시 선택</button>' +
@@ -277,6 +290,9 @@ function finishExamXL(timeUp) {
   state.exam.marks = state.queue.map(function (p, i) { return gradeOne(p, state.exam.raw[i]); });
   state.correct = state.exam.marks.filter(function (m) { return m.ok; }).length;
   state.durationSec = Math.round((Date.now() - state.startTime) / 1000);
+  // 실전은 RP 2배 + 합격(70점) 보너스 30
+  var n = state.queue.length, passed = Math.round(state.correct / n * 100) >= PASS_SCORE;
+  state.rp = hasRank() ? CH2Rank.award(state.correct, n - state.correct, 2, passed ? 30 : 0) : null;
   showExamResult();
 }
 function showExamResult() {
@@ -295,6 +311,8 @@ function showExamResult() {
       '<div style="color:var(--tx2);margin-top:4px">정답 ' + c + ' / ' + n +
         ' · 소요 ' + Math.floor(state.durationSec / 60) + '분 ' + (state.durationSec % 60) + '초</div>' +
       '<div style="color:var(--tx2);font-size:13px;margin-top:6px">실기는 <b style="color:var(--tx)">70점 이상</b>이면 합격이에요.</div>' +
+      rankBanner(state.rp) +
+      rankRegister() +
       submitBtnHtml() +
       '<div class="rbtns">' +
         '<button class="btn sec" onclick="showExamReview()">📖 풀이 보기 (' + (n - c) + '개 오답)</button>' +
@@ -346,12 +364,13 @@ function submitBtnHtml() {
 function submitResult() {
   if (!submitEnabled()) return;
   var n = state.queue.length, c = state.correct, score = Math.round(c / n * 100);
+  var tier = hasRank() ? (' · ' + CH2Rank.tierOf(CH2Rank.rp()).name + '(' + CH2Rank.rp() + 'RP)') : '';
   if (isExam()) {
     ResultCollector.config.tool = '컴활2급 실기 실전 · ' + state.exam.mode.nm;
     ResultCollector.open({
       score: score, correct: c, total: n, durationSec: state.durationSec,
-      labels: { score: '점수', correct: '맞힘', total: '문항수', wrong: '합격여부' },
-      wrong: score >= PASS_SCORE ? '합격' : '불합격',
+      labels: { score: '점수', correct: '맞힘', total: '문항수', wrong: '합격여부 · 계급' },
+      wrong: (score >= PASS_SCORE ? '합격' : '불합격') + tier,
     });
     return;
   }
