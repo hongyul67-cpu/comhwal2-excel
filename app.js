@@ -357,29 +357,41 @@ function escapeHtml(s) {
 /* ---------- 결과 제출(collector) ---------- */
 function submitEnabled() { return !!(window.ResultCollector && ResultCollector.config && ResultCollector.config.endpoint); }
 function submitBtnHtml() {
-  if (!submitEnabled()) return '';
   return '<div class="row" style="justify-content:center;margin:14px 0 4px">' +
     '<button class="btn green" id="xlSubmit" onclick="submitResult()">📤 선생님께 결과 제출</button></div>';
 }
+function submitGuide() {
+  alert(['이 링크로는 제출이 되지 않아요.', '',
+    '선생님이 나눠 준 제출용 링크(주소 뒤에 ?rc=... 가 붙은 링크)로',
+    '들어와야 반·번호를 입력하고 결과를 보낼 수 있습니다.', '',
+    '연습은 지금 이대로 계속 하셔도 됩니다.'].join(String.fromCharCode(10)));
+}
 function submitResult() {
-  if (!submitEnabled()) return;
+  if (!submitEnabled()) { submitGuide(); return; }
   var n = state.queue.length, c = state.correct, score = Math.round(c / n * 100);
   var tier = hasRank() ? (' · ' + CH2Rank.tierOf(CH2Rank.rp()).name + '(' + CH2Rank.rp() + 'RP)') : '';
   if (isExam()) {
-    ResultCollector.config.tool = '컴활2급 실기 실전 · ' + state.exam.mode.nm;
+    // 시트 탭은 하나로 — 실전 유형은 mode 로 (규약 §1 ①)
+    ResultCollector.config.tool = '컴활 2급 실기-스프레드시트';
     ResultCollector.open({
       score: score, correct: c, total: n, durationSec: state.durationSec,
-      labels: { score: '점수', correct: '맞힘', total: '문항수', wrong: '합격여부 · 계급' },
-      wrong: (score >= PASS_SCORE ? '합격' : '불합격') + tier,
+      labels: { score: '점수', correct: '맞힘', total: '문항수' },
+      mode: '스프레드시트 실기 — 실전 ' + state.exam.mode.nm +
+            (score >= PASS_SCORE ? ' (합격)' : ' (불합격)'),
+      tier: hasRank() ? CH2Rank.tierOf(CH2Rank.rp()).name : undefined,
+      extra: ['실전 형식 문제 해결'],
     });
     return;
   }
-  ResultCollector.config.tool = '컴활2급 실기-스프레드시트' + (state.cat !== '전체' ? (' · ' + state.cat) : '');
+  ResultCollector.config.tool = '컴활 2급 실기-스프레드시트';
   ResultCollector.open({
     score: score,
     correct: c, total: n,
     durationSec: state.durationSec,
     labels: { score: '정답률', correct: '맞힘', total: '문항수' },
+    mode: '스프레드시트 실기 — ' + (state.cat || '전체'),
+    tier: hasRank() ? CH2Rank.tierOf(CH2Rank.rp()).name : undefined,
+    extra: ['함수·수식 작성'],
   });
 }
 
