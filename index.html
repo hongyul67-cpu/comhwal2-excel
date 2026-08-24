@@ -93,8 +93,32 @@
   /* 모드 선택 */
   .modes2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 4px}
   @media(max-width:520px){.modes2{grid-template-columns:1fr}}
-  .modes3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 4px}
+  .modes3{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0 4px}
   @media(max-width:720px){.modes3{grid-template-columns:1fr}}
+  .mcard.st.on{border-color:#9d6bff;box-shadow:0 0 0 2px rgba(157,107,255,.3)}
+  /* 작업 순서 모드 */
+  .stlab{font-size:12px;font-weight:800;color:var(--tx2);margin:14px 2px 6px}
+  .stlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .stp{background:var(--card2);border:1.5px solid var(--line);border-radius:11px;
+    padding:12px 14px;font-size:14px;line-height:1.5;display:flex;gap:9px;align-items:flex-start}
+  .stp.pick{cursor:pointer;transition:.12s}
+  .stp.pick:hover{border-color:var(--pri);transform:translateX(3px)}
+  .stp .n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--pri);color:#fff;
+    font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .stp.done.ok{border-color:var(--ok);background:rgba(39,192,147,.12)}
+  .stp.done.no{border-color:var(--no);background:rgba(255,90,106,.12)}
+  .stp.done.no .n{background:var(--no)}
+  .stp .fix{display:block;color:var(--gold);font-size:12.5px;margin-top:4px;font-weight:700}
+  .stempty{color:var(--tx2);font-size:13.5px;padding:10px 2px}
+  .stq{font-size:15.5px;font-weight:700;line-height:1.6;background:var(--card2);
+    border-radius:10px;padding:13px 15px;margin-bottom:10px}
+  .stopts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .stopts li{background:var(--card2);border:1.5px solid var(--line);border-radius:11px;
+    padding:12px 14px;font-size:14.5px;cursor:pointer;display:flex;gap:9px;transition:.12s}
+  .stopts li:hover{border-color:var(--pri)}
+  .stopts li .k{flex:none;font-weight:800;color:var(--tx2)}
+  .stopts li.hit{border-color:var(--ok);background:rgba(39,192,147,.14)}
+  .stopts li.miss{border-color:var(--no);background:rgba(255,90,106,.14)}
   .mcard.cls.on{border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,210,63,.28)}
   .jump{background:var(--card2);color:var(--tx);border:1px solid var(--line);border-radius:10px;
     padding:10px 12px;font-size:13.5px;font-weight:700;max-width:230px}
@@ -153,6 +177,9 @@
         <div class="mcard" id="mcExam" onclick="pickMode('exam')">
           <b>⏱️ 실전 모드</b><span>제한 시간 · 힌트 없이 · <b style="color:var(--ok)">70점 이상 합격</b> · 풀이는 제출 후</span>
         </div>
+        <div class="mcard st" id="mcSteps" onclick="pickMode('steps')">
+          <b>🧰 작업 순서 (함수 말고)</b><span>기본·분석·기타 작업 — <b style="color:#b79bff">부분합·피벗·고급필터·차트·매크로</b>를 <b>손 순서</b>로</span>
+        </div>
       </div>
 
       <div id="classPanel">
@@ -176,6 +203,20 @@
         <div class="note">
           <b>사용법</b> · 노란색 셀에 들어갈 <b>수식</b>을 아래 입력줄에 <kbd>=</kbd>로 시작해 입력하고 <kbd>Enter</kbd>.<br>
           입력하는 동안 <b>노란 칸에 계산 결과가 실시간으로</b> 나타나요. 서로 다른 수식이어도 <b>결과값이 맞으면 정답</b>입니다.
+        </div>
+      </div>
+
+      <div id="stepsPanel" class="hidden">
+        <h2>작업 범위 선택</h2>
+        <div class="chips" id="catChipsS"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn" style="flex:1" onclick="STEPS.start(true)">함께 풀기 (순서 고정) ▶</button>
+          <button class="btn sec" style="flex:1" onclick="STEPS.start(false)">혼자 연습 (랜덤) ▶</button>
+        </div>
+        <div class="note" style="border-left-color:#9d6bff">
+          <b>실기는 계산작업이 전부가 아닙니다</b> · 부분합·피벗·고급 필터·차트·매크로는
+          <b>어느 메뉴에서 무엇을 어떤 순서로</b> 고르는지가 곧 점수예요.<br>
+          섞어 놓은 단계를 <b>순서대로 눌러</b> 맞히고, 이어서 대화상자에서 무엇을 고르는지 확인합니다.
         </div>
       </div>
 
@@ -215,6 +256,24 @@
     </div>
   </section>
 
+  <!-- 작업 순서 -->
+  <section id="steps" class="hidden">
+    <div class="hud">
+      <button class="btn ghost" style="padding:8px 12px" onclick="stepsQuit()">← 나가기</button>
+      <div class="chip2" id="stProg">1 / 14</div>
+      <div class="pgbar"><i id="stFill"></i></div>
+      <div class="chip2" id="stScore">0점</div>
+    </div>
+    <div class="pcard">
+      <div class="cattag" id="stCat"></div>
+      <div class="ptitle" id="stTitle"></div>
+      <div class="prompt" id="stPrompt"></div>
+      <div id="stBody"></div>
+      <div class="toolbtns" id="stTools"></div>
+      <div id="stFb"></div>
+    </div>
+  </section>
+
   <!-- 결과 -->
   <section id="result" class="hidden"></section>
 </div>
@@ -222,6 +281,7 @@
 <script src="engine.js"></script>
 <script src="data/problems.js"></script>
 <script src="data/problems-plus.js"></script>
+<script src="data/steps.js"></script>
 <!-- 공용 계급·랭크포인트 (개념게임과 같은 저장소를 써서 계급이 함께 오름) -->
 <script src="../comhwal2/rank.js"></script>
 <script src="https://hongyul67-cpu.github.io/links/collector.js"
@@ -291,6 +351,7 @@
 })();
 </script>
 <script src="app.js"></script>
+<script src="steps.js"></script>
 <!-- 공용 기록 초기화 (교실 공용 PC용) -->
 <script src="https://hongyul67-cpu.github.io/links/reset.js"></script>
 </body>

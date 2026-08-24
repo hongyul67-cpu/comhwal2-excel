@@ -49,6 +49,18 @@ function renderStart() {
       box.appendChild(el);
     });
   });
+  // 작업 순서 모드의 범위 칩 (계산작업과 유형이 달라 따로 그린다)
+  var sBox = $('catChipsS');
+  if (sBox && window.STEPS) {
+    sBox.innerHTML = '';
+    STEPS.categories().forEach(function (c) {
+      var el = document.createElement('div');
+      el.className = 'chip' + (c === STEPS.cat() ? ' on' : '');
+      el.textContent = c + ' (' + STEPS.count(c) + ')';
+      el.onclick = function () { STEPS.setCat(c); renderStart(); };
+      sBox.appendChild(el);
+    });
+  }
   var ex = $('examOpts');
   if (ex) {
     ex.innerHTML = EXAM_MODES.map(function (m, i) {
@@ -60,10 +72,10 @@ function renderStart() {
 }
 function pickMode(m) {
   state.uiMode = m;
-  [['mcClass', 'class'], ['mcPractice', 'practice'], ['mcExam', 'exam']].forEach(function (x) {
+  [['mcClass', 'class'], ['mcPractice', 'practice'], ['mcExam', 'exam'], ['mcSteps', 'steps']].forEach(function (x) {
     var el = $(x[0]); if (el) el.classList.toggle('on', m === x[1]);
   });
-  [['classPanel', 'class'], ['practicePanel', 'practice'], ['examPanel', 'exam']].forEach(function (x) {
+  [['classPanel', 'class'], ['practicePanel', 'practice'], ['examPanel', 'exam'], ['stepsPanel', 'steps']].forEach(function (x) {
     if ($(x[0])) (m === x[1] ? show : hide)(x[0]);
   });
 }
@@ -477,6 +489,19 @@ function submitGuide() {
 }
 function submitResult() {
   if (!submitEnabled()) { submitGuide(); return; }
+  // 작업 순서 모드의 결과는 따로 담아 둔다
+  if (window.__stepsResult) {
+    var st = window.__stepsResult;
+    ResultCollector.config.tool = '컴활 2급 실기-스프레드시트';
+    ResultCollector.open({
+      score: st.score, correct: st.correct, total: st.total, durationSec: st.durationSec,
+      labels: { score: '정답률', correct: '맞힘', total: '문항수' },
+      mode: '스프레드시트 실기 — 작업 순서(' + (st.fixed ? '수업' : '개인') + ') · ' + st.cat,
+      tier: hasRank() ? CH2Rank.tierOf(CH2Rank.rp()).name : undefined,
+      extra: ['기본·분석·기타 작업 절차'],
+    });
+    return;
+  }
   var n = state.queue.length, c = state.correct, score = Math.round(c / n * 100);
   var tier = hasRank() ? (' · ' + CH2Rank.tierOf(CH2Rank.rp()).name + '(' + CH2Rank.rp() + 'RP)') : '';
   if (isExam()) {
