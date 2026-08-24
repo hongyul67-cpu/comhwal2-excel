@@ -192,6 +192,11 @@ function setCell(cls, html) {
   td.className = 'tcell' + (cls ? ' ' + cls : '');
   td.innerHTML = html;
 }
+/* 계산이 안 되면 값 대신 '오류'라고 분명히 보여 준다 — 숫자가 왜 안 나오는지 바로 알게 */
+function cellError(msg) {
+  setCell('err', '<div class="cv">⚠ 오류</div>' +
+    (msg ? '<div class="cv2 errcode">' + escapeHtml(msg) + '</div>' : ''));
+}
 function updateLive() {
   if (state.answered) return;                 // 채점 뒤에는 결과를 고정해 둔다
   var p = state.queue[state.idx];
@@ -203,7 +208,7 @@ function updateLive() {
   var r = XLEngine.evaluate(raw, p.grid);
   if ('error' in r) {
     if (looksIncomplete(raw)) setCell('typing', '…');
-    else setCell('err', escapeHtml(r.error));
+    else cellError(r.error);
     return;
   }
   setCell('live', escapeHtml(fmt(r.value)));
@@ -231,7 +236,7 @@ function checkAnswer() {
   var stu = XLEngine.evaluate(raw, p.grid);
   var model = XLEngine.evaluate(p.answer, p.grid);
   if ('error' in stu) {
-    setCell('err', escapeHtml(stu.error));
+    cellError(stu.error);
     flash('<b>❌ 수식 오류:</b> ' + stu.error + '<br>괄호·따옴표·쉼표를 확인해 보세요. (노란 칸에도 오류가 그대로 나옵니다)', 'no');
     return;
   }
@@ -250,7 +255,24 @@ function checkAnswer() {
     finish('<b>❌ 오답</b> · 내 결과: <b>' + fmt(stu.value) + '</b> (정답 결과: <b>' + fmt(modelVal) + '</b>)', 'no', p);
   }
 }
-function fmt(v) { return (v === '' ? '(빈 문자열)' : String(v)); }
+/* 셀에 보여 줄 값 — 엑셀처럼 깔끔한 숫자로 만든다.
+   자바스크립트 계산은 0.1*0.2 가 0.020000000000000004 처럼 나오는데,
+   학생 눈에는 "숫자가 이상하게 나온다"로 보이므로 찌꺼기를 잘라 낸다.
+   채점(valEqual)은 원래 값으로 하므로 여기서 반올림해도 정답 판정은 달라지지 않는다. */
+function fmt(v) {
+  if (v === '' || v === null || v === undefined) return '(빈 문자열)';
+  if (v === true) return 'TRUE';
+  if (v === false) return 'FALSE';
+  if (typeof v === 'number') {
+    if (!isFinite(v)) return String(v);
+    if (Math.floor(v) === v && Math.abs(v) < 1e15) return String(v);
+    var r = Number(v.toPrecision(12));                 // 부동소수점 찌꺼기 제거
+    var dec = (String(r).split('.')[1] || '').length;
+    if (dec > 6) r = Number(r.toFixed(6));             // 너무 긴 소수는 6자리까지만 보여 준다
+    return String(r);
+  }
+  return String(v);
+}
 function flash(msg, cls) { $('fb').innerHTML = '<div class="feedback ' + cls + '">' + msg + '</div>'; }
 function finish(msg, cls, p) {
   var last = state.idx === state.queue.length - 1;

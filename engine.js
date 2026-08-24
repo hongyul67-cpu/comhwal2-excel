@@ -167,7 +167,8 @@
   function parseDate(v) { // "2024-03-15" / "2024/3/5" 형태를 Date로
     if (isErr(v) || v === null) return null;
     if (v instanceof Date) return v;
-    var m = /^\s*(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})\s*$/.exec(String(v));
+    // 뒤에 시각이 붙어 있어도(NOW의 결과) 날짜 부분만 읽는다
+    var m = /^\s*(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:[\sT].*)?$/.exec(String(v));
     if (!m) return null;
     var d = new Date(+m[1], +m[2] - 1, +m[3]);
     return isNaN(d.getTime()) ? null : d;
@@ -469,7 +470,14 @@
           return Math.min.apply(null, dn);
         }
 
-        case 'TODAY': case 'NOW': return new XErr(ERR.NA); // 오늘 날짜는 채점이 불가하여 제외
+        /* 학생 수식과 모범답안을 같은 순간에 계산하므로 오늘 날짜를 써도 채점이 흔들리지 않는다.
+           (자정을 넘기는 찰나만 예외인데, 그때는 두 값이 하루 차이 나 오답이 될 수 있다) */
+        case 'TODAY': { var td = new Date(); return td.getFullYear() + '-' + p2(td.getMonth() + 1) + '-' + p2(td.getDate()); }
+        case 'NOW': {
+          var nw = new Date();
+          return nw.getFullYear() + '-' + p2(nw.getMonth() + 1) + '-' + p2(nw.getDate()) +
+            ' ' + p2(nw.getHours()) + ':' + p2(nw.getMinutes()) + ':' + p2(nw.getSeconds());
+        }
         default: return new XErr(ERR.NAME);
       }
     }
