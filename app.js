@@ -7,7 +7,9 @@ function show(id) { $(id).classList.remove('hidden'); }
 function hide(id) { $(id).classList.add('hidden'); }
 function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 
-var state = { cat: '전체', queue: [], idx: 0, correct: 0, answered: false, done: 0, startTime: 0, exam: null };
+/* fixed=true  → 수업용 '함께 풀기'. 문제 순서를 절대 섞지 않아 모든 PC에서 N번 문제가 같다.
+   fixed=false → 학생 개인 연습. 매번 섞어서 출제. */
+var state = { cat: '전체', queue: [], idx: 0, correct: 0, answered: false, done: 0, startTime: 0, exam: null, fixed: false, uiMode: 'class' };
 
 /* ---------- 실전 모드 설정 ---------- */
 var EXAM_MODES = [
@@ -35,13 +37,17 @@ function renderStart() {
   renderRank();
   var tl = $('timerLabel'); if (tl) { tl.classList.add('hidden'); tl.classList.remove('warn'); }
   hide('practice'); hide('result'); show('start');
-  var box = $('catChips'); box.innerHTML = '';
-  categories().forEach(function (c) {
-    var el = document.createElement('div');
-    el.className = 'chip' + (c === state.cat ? ' on' : '');
-    el.textContent = c === '전체' ? ('전체 (' + PROBS.length + ')') : c;
-    el.onclick = function () { state.cat = c; renderStart(); };
-    box.appendChild(el);
+  ['catChipsC', 'catChips'].forEach(function (boxId) {
+    var box = $(boxId); if (!box) return;
+    box.innerHTML = '';
+    categories().forEach(function (c) {
+      var n = c === '전체' ? PROBS.length : PROBS.filter(function (p) { return p.cat === c; }).length;
+      var el = document.createElement('div');
+      el.className = 'chip' + (c === state.cat ? ' on' : '');
+      el.textContent = c + ' (' + n + ')';
+      el.onclick = function () { state.cat = c; renderStart(); };
+      box.appendChild(el);
+    });
   });
   var ex = $('examOpts');
   if (ex) {
@@ -54,21 +60,25 @@ function renderStart() {
 }
 function pickMode(m) {
   state.uiMode = m;
-  var pc = $('mcPractice'), ec = $('mcExam');
-  if (pc) pc.classList.toggle('on', m === 'practice');
-  if (ec) ec.classList.toggle('on', m === 'exam');
-  if (m === 'exam') { hide('practicePanel'); show('examPanel'); }
-  else { show('practicePanel'); hide('examPanel'); }
+  [['mcClass', 'class'], ['mcPractice', 'practice'], ['mcExam', 'exam']].forEach(function (x) {
+    var el = $(x[0]); if (el) el.classList.toggle('on', m === x[1]);
+  });
+  [['classPanel', 'class'], ['practicePanel', 'practice'], ['examPanel', 'exam']].forEach(function (x) {
+    if ($(x[0])) (m === x[1] ? show : hide)(x[0]);
+  });
 }
 
 /* ---------- 연습 진행 ---------- */
-function startPractice() {
+/* 수업용: 교재(데이터) 순서 그대로 — 섞지 않는다 */
+function startClass() { startPractice(true); }
+function startPractice(fixed) {
   clearExamTimer();
   state.exam = null;
+  state.fixed = (fixed === true);
   var tl = $('timerLabel'); if (tl) { tl.classList.add('hidden'); tl.classList.remove('warn'); }
   var pool = state.cat === '전체' ? PROBS : PROBS.filter(function (p) { return p.cat === state.cat; });
-  state.queue = shuffle(pool);
-  state.idx = 0; state.correct = 0; state.done = 0; state.startTime = Date.now();
+  state.queue = state.fixed ? pool.slice() : shuffle(pool);
+  state.idx = 0; state.correct = 0; state.done = 0; state.marked = {}; state.startTime = Date.now();
   if (!state.queue.length) return;
   hide('start'); hide('result'); show('practice');
   renderProblem();
@@ -106,12 +116,33 @@ function renderProblem() {
     $('scoreLabel').textContent = state.correct + '점';
     fx.value = '';
     $('toolBtns').innerHTML =
+      (state.fixed ? '<button class="btn ghost" onclick="prevProblem()"' + (state.idx === 0 ? ' disabled' : '') + '>← 이전</button>' : '') +
       '<button class="btn green" onclick="checkAnswer()">확인</button>' +
       '<button class="btn sec" onclick="showHint()">💡 힌트</button>' +
       '<button class="btn ghost" onclick="showModel()">모범답안</button>' +
-      '<button class="btn ghost" onclick="skipProblem()">건너뛰기 →</button>';
+      '<button class="btn ghost" onclick="skipProblem()">' + (state.fixed ? '다음 →' : '건너뛰기 →') + '</button>' +
+      (state.fixed ? jumpSelectHtml() : '');
   }
+  updateLive();
   setTimeout(function () { fx.focus(); }, 40);
+}
+
+/* 수업용 — 원하는 문제 번호로 바로 이동 (선생님이 "12번 볼게요" 할 때) */
+function jumpSelectHtml() {
+  var opts = state.queue.map(function (p, i) {
+    return '<option value="' + i + '"' + (i === state.idx ? ' selected' : '') + '>' +
+      (i + 1) + '. ' + escapeHtml(p.title) + '</option>';
+  }).join('');
+  return '<div class="spacer"></div><select class="jump" onchange="jumpTo(this.value)">' + opts + '</select>';
+}
+function jumpTo(i) {
+  i = parseInt(i, 10);
+  if (isNaN(i) || i < 0 || i >= state.queue.length) return;
+  state.idx = i;
+  renderProblem();
+}
+function prevProblem() {
+  if (state.idx > 0) { state.idx--; renderProblem(); }
 }
 
 function renderSheet(p) {
@@ -129,11 +160,59 @@ function renderSheet(p) {
       var isNum = (typeof v === 'number');
       var cls = isT ? 'tcell' : (isNum ? 'num' : '');
       var disp = isT ? '?' : (v === null || v === undefined ? '' : v);
-      html += '<td class="' + cls + '">' + disp + '</td>';
+      html += '<td class="' + cls + '"' + (isT ? ' id="tcell"' : '') + '>' + disp + '</td>';
     }
     html += '</tr>';
   }
   $('sheet').innerHTML = html;
+}
+
+/* ---------- 노란 칸 실시간 결과 ----------
+ * 학생이 입력줄에 치는 동안 그 수식을 실제로 계산해 노란 셀에 그대로 보여준다.
+ * (아래 정답만 뜨면 "진짜 작동하는지" 알 수 없다는 피드백 → 엑셀처럼 셀에 값이 뜨게)
+ * 괄호·따옴표가 아직 안 닫혔으면 오류 대신 '…'으로 조용히 넘어간다. */
+function looksIncomplete(f) {
+  var depth = 0, q = false;
+  for (var i = 0; i < f.length; i++) {
+    var ch = f.charAt(i);
+    if (ch === '"') { q = !q; continue; }
+    if (q) continue;
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+  }
+  if (q || depth > 0) return true;
+  if (/[,(+\-*/^&<>=:]$/.test(f)) return true;
+  // 함수 이름을 치는 중(=IF, =SUM …). 셀 주소(=B2)는 완성으로 본다.
+  if (/[A-Za-z_.]$/.test(f) && !/\$?[A-Za-z]{1,3}\$?[0-9]+$/.test(f)) return true;
+  return false;
+}
+function setCell(cls, html) {
+  var td = $('tcell');
+  if (!td) return;
+  td.className = 'tcell' + (cls ? ' ' + cls : '');
+  td.innerHTML = html;
+}
+function updateLive() {
+  if (state.answered) return;                 // 채점 뒤에는 결과를 고정해 둔다
+  var p = state.queue[state.idx];
+  if (!p || !$('tcell')) return;
+  var raw = ($('fx').value || '').trim();
+  if (!raw) { setCell('', '?'); return; }
+  if (raw.charAt(0) !== '=') { setCell('lit', escapeHtml(raw)); return; }
+  if (raw.length === 1) { setCell('typing', '…'); return; }
+  var r = XLEngine.evaluate(raw, p.grid);
+  if ('error' in r) {
+    if (looksIncomplete(raw)) setCell('typing', '…');
+    else setCell('err', escapeHtml(r.error));
+    return;
+  }
+  setCell('live', escapeHtml(fmt(r.value)));
+}
+/* 채점 결과를 셀에 남긴다 — 틀리면 내 값 아래에 정답 값도 같이 */
+function paintGraded(myVal, modelVal, ok) {
+  var my = '<div class="cv">' + escapeHtml(fmt(myVal)) + '</div>';
+  if (ok) { setCell('good', my); return; }
+  setCell('bad', my + '<div class="cv2">정답 ' + escapeHtml(fmt(modelVal)) + '</div>');
 }
 
 /* ---------- 채점 ---------- */
@@ -152,19 +231,23 @@ function checkAnswer() {
   var stu = XLEngine.evaluate(raw, p.grid);
   var model = XLEngine.evaluate(p.answer, p.grid);
   if ('error' in stu) {
-    flash('<b>❌ 수식 오류:</b> ' + stu.error + '<br>괄호·따옴표·쉼표를 확인해 보세요.', 'no');
+    setCell('err', escapeHtml(stu.error));
+    flash('<b>❌ 수식 오류:</b> ' + stu.error + '<br>괄호·따옴표·쉼표를 확인해 보세요. (노란 칸에도 오류가 그대로 나옵니다)', 'no');
     return;
   }
   var ok = !('error' in model) && valEqual(stu.value, model.value);
   state.answered = true;
   state.done++;
   var fx = $('fx'); fx.disabled = true;
+  var modelVal = ('error' in model) ? '-' : model.value;
+  paintGraded(stu.value, modelVal, ok);
   if (ok) {
-    state.correct++;
+    /* 수업용은 앞뒤로 오갈 수 있어 같은 문제를 두 번 맞혀도 점수가 중복되지 않게 한다 */
+    if (!state.marked[state.idx]) { state.marked[state.idx] = 1; state.correct++; }
     $('scoreLabel').textContent = state.correct + '점';
-    finish('<b>✅ 정답!</b> 계산 결과: <b>' + fmt(stu.value) + '</b>', 'ok', p);
+    finish('<b>✅ 정답!</b> 노란 칸에 나온 계산 결과: <b>' + fmt(stu.value) + '</b>', 'ok', p);
   } else {
-    finish('<b>❌ 오답</b> · 내 결과: <b>' + fmt(stu.value) + '</b> (정답 결과: <b>' + fmt(model.value) + '</b>)', 'no', p);
+    finish('<b>❌ 오답</b> · 내 결과: <b>' + fmt(stu.value) + '</b> (정답 결과: <b>' + fmt(modelVal) + '</b>)', 'no', p);
   }
 }
 function fmt(v) { return (v === '' ? '(빈 문자열)' : String(v)); }
@@ -202,7 +285,10 @@ function showHint() {
 }
 function showModel() {
   var p = state.queue[state.idx];
+  var m = XLEngine.evaluate(p.answer, p.grid);
+  var mv = ('error' in m) ? '-' : fmt(m.value);
   $('fb').innerHTML = '<div class="feedback ok">모범답안 <span class="ansline">' + p.answer + '</span>' +
+    '<div style="margin-top:6px">이 수식을 넣으면 노란 칸에 <b>' + escapeHtml(mv) + '</b> 이(가) 나옵니다.</div>' +
     (p.hint ? '<div style="margin-top:6px;color:var(--tx2)">💡 ' + p.hint + '</div>' : '') +
     '<div style="margin-top:6px;color:var(--tx2);font-size:13px">입력줄에 직접 따라 쳐 보고 [확인]을 눌러 보세요.</div></div>';
 }
@@ -225,7 +311,7 @@ function showResult() {
       submitBtnHtml() +
       '<div class="rbtns">' +
         '<button class="btn sec" onclick="renderStart()">범위 다시 선택</button>' +
-        '<button class="btn" onclick="startPractice()">다시 풀기</button>' +
+        '<button class="btn" onclick="startPractice(' + (state.fixed ? 'true' : 'false') + ')">다시 풀기</button>' +
       '</div>' +
     '</div>';
 }
@@ -235,7 +321,8 @@ function startExam(mode) {
   var n = Math.min(mode.n, PROBS.length);
   if (!n) { alert('문제를 준비하지 못했어요.'); return; }
   state.queue = shuffle(PROBS).slice(0, n);
-  state.idx = 0; state.correct = 0; state.done = 0; state.startTime = Date.now();
+  state.fixed = false;
+  state.idx = 0; state.correct = 0; state.done = 0; state.marked = {}; state.startTime = Date.now();
   state.exam = { mode: mode, raw: new Array(n).fill(''), deadline: Date.now() + mode.min * 60000, timeUp: false };
   hide('start'); hide('result'); show('practice');
   var tl = $('timerLabel'); if (tl) tl.classList.remove('hidden');
@@ -389,11 +476,19 @@ function submitResult() {
     correct: c, total: n,
     durationSec: state.durationSec,
     labels: { score: '정답률', correct: '맞힘', total: '문항수' },
-    mode: '스프레드시트 실기 — ' + (state.cat || '전체'),
+    mode: '스프레드시트 실기 — ' + (state.fixed ? '함께 풀기(수업)' : '랜덤 연습') + ' · ' + (state.cat || '전체'),
     tier: hasRank() ? CH2Rank.tierOf(CH2Rank.rp()).name : undefined,
     extra: ['함수·수식 작성'],
   });
 }
+
+/* ---------- 입력할 때마다 노란 칸 갱신 ---------- */
+document.addEventListener('DOMContentLoaded', bindLive);
+function bindLive() {
+  var fx = $('fx');
+  if (fx && !fx.__live) { fx.__live = 1; fx.addEventListener('input', updateLive); }
+}
+bindLive();
 
 /* ---------- Enter 키 ---------- */
 document.addEventListener('keydown', function (e) {

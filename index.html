@@ -61,8 +61,17 @@
   table.sheet td.rowh{background:var(--gridhead);color:var(--tx2);font-weight:700}
   table.sheet td{background:var(--grid)}
   table.sheet td.tcell{background:var(--target);outline:2px solid var(--gold);outline-offset:-2px;
-    font-weight:800;color:var(--gold);position:relative}
+    font-weight:800;color:var(--gold);position:relative;min-width:74px;transition:.12s}
   table.sheet td.num{text-align:right}
+  /* 노란 칸에 실시간으로 나타나는 계산 결과 */
+  table.sheet td.tcell.typing{background:#1a1f3a;outline-color:var(--line);color:var(--tx2);font-weight:600}
+  table.sheet td.tcell.live,table.sheet td.tcell.good{background:#12302a;outline-color:var(--ok);color:#7cf0c9}
+  table.sheet td.tcell.err,table.sheet td.tcell.bad{background:#31161c;outline-color:var(--no);color:#ff9aa5}
+  table.sheet td.tcell.lit{background:#1a1f3a;outline-color:var(--pri);color:var(--tx);font-weight:600}
+  table.sheet td.tcell .cv{font-weight:800;font-size:13.5px}
+  table.sheet td.tcell .cv2{font-size:11px;font-weight:700;color:var(--gold);margin-top:3px;opacity:.95}
+  .livehint{font-size:12px;color:var(--tx2);margin:-8px 0 12px 2px;line-height:1.5}
+  .livehint b{color:var(--gold)}
 
   /* 수식 입력줄 */
   .fxbar{display:flex;align-items:stretch;gap:0;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#12162b}
@@ -83,6 +92,11 @@
   /* 모드 선택 */
   .modes2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 4px}
   @media(max-width:520px){.modes2{grid-template-columns:1fr}}
+  .modes3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 4px}
+  @media(max-width:720px){.modes3{grid-template-columns:1fr}}
+  .mcard.cls.on{border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,210,63,.28)}
+  .jump{background:var(--card2);color:var(--tx);border:1px solid var(--line);border-radius:10px;
+    padding:10px 12px;font-size:13.5px;font-weight:700;max-width:230px}
   .mcard{background:var(--card2);border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;
     cursor:pointer;transition:.12s;display:flex;flex-direction:column;gap:4px}
   .mcard:hover{transform:translateY(-2px)}
@@ -128,24 +142,39 @@
       <div style="color:var(--tx2);font-size:14px">실제 엑셀처럼 <b style="color:var(--tx)">함수를 직접 입력</b>하면, 진짜로 계산해서 채점해요.</div>
       <div id="rankCard" style="margin-top:14px"></div>
       <h2>모드 선택</h2>
-      <div class="modes2">
-        <div class="mcard on" id="mcPractice" onclick="pickMode('practice')">
-          <b>📚 연습 모드</b><span>범위를 골라 한 문제씩 · 바로 채점 · 힌트·모범답안 볼 수 있어요</span>
+      <div class="modes3">
+        <div class="mcard cls on" id="mcClass" onclick="pickMode('class')">
+          <b>👩‍🏫 함께 풀기 (수업용)</b><span><b style="color:var(--gold)">순서 고정</b> · 1번부터 차례대로 · 앞뒤로 이동 · 번호로 바로 가기</span>
+        </div>
+        <div class="mcard" id="mcPractice" onclick="pickMode('practice')">
+          <b>📚 혼자 연습 (랜덤)</b><span>문제가 <b style="color:var(--pri2)">섞여서</b> 나와요 · 바로 채점 · 힌트·모범답안</span>
         </div>
         <div class="mcard" id="mcExam" onclick="pickMode('exam')">
           <b>⏱️ 실전 모드</b><span>제한 시간 · 힌트 없이 · <b style="color:var(--ok)">70점 이상 합격</b> · 풀이는 제출 후</span>
         </div>
       </div>
 
-      <div id="practicePanel">
+      <div id="classPanel">
+        <h2>수업 범위 선택</h2>
+        <div class="chips" id="catChipsC"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn" style="flex:1" onclick="startClass()">함께 풀기 시작 ▶</button>
+        </div>
+        <div class="note" style="border-left-color:var(--gold)">
+          <b>수업용</b> · 문제 순서가 <b>절대 섞이지 않아요</b>. 선생님 화면과 학생 화면의 <b>1번 문제가 같습니다</b>.<br>
+          <b>← 이전</b>으로 되돌아갈 수 있고, <b>번호 선택</b>으로 원하는 문제로 바로 이동할 수 있어요.
+        </div>
+      </div>
+
+      <div id="practicePanel" class="hidden">
         <h2>연습 범위 선택</h2>
         <div class="chips" id="catChips"></div>
         <div class="row" style="margin-top:14px">
-          <button class="btn" style="flex:1" onclick="startPractice()">연습 시작 ▶</button>
+          <button class="btn" style="flex:1" onclick="startPractice()">랜덤 연습 시작 ▶</button>
         </div>
         <div class="note">
           <b>사용법</b> · 노란색 셀에 들어갈 <b>수식</b>을 아래 입력줄에 <kbd>=</kbd>로 시작해 입력하고 <kbd>Enter</kbd>.<br>
-          서로 다른 수식이어도 <b>결과값이 맞으면 정답</b>으로 인정됩니다.
+          입력하는 동안 <b>노란 칸에 계산 결과가 실시간으로</b> 나타나요. 서로 다른 수식이어도 <b>결과값이 맞으면 정답</b>입니다.
         </div>
       </div>
 
@@ -175,6 +204,7 @@
       <div class="ptitle" id="pTitle"></div>
       <div class="prompt" id="pPrompt"></div>
       <div class="gridwrap"><table class="sheet" id="sheet"></table></div>
+      <div class="livehint">🟡 노란 칸 = 지금 입력한 수식의 <b>실제 계산 결과</b>가 바로 나타납니다. (엑셀처럼 확인해 보세요)</div>
       <div class="fxbar">
         <div class="fxlabel">fx</div>
         <input id="fx" type="text" placeholder="=  여기에 수식 입력 후 Enter" autocomplete="off" autocapitalize="off" spellcheck="false">
