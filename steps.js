@@ -126,7 +126,11 @@
   }
 
   function drawOpt() {
-    var p = S.queue[S.idx], o = p.opts[S.oi];
+    var p = S.queue[S.idx], o = p.opts && p.opts[S.oi];
+    /* finishOrder 가 250ms 뒤에 그리기로 예약해 둔다. 그 사이에 [건너뛰기]를
+       빠르게 두 번 눌러 문제를 다 넘겨 버리면 그릴 것이 없다.
+       뒤늦게 도착한 예약이므로 그냥 무시한다. */
+    if (!o) { drawTools(); return; }
     $('stBody').innerHTML =
       '<div class="stlab">대화상자에서 무엇을 고르나요? (' + (S.oi + 1) + ' / ' + p.opts.length + ')</div>' +
       '<div class="stq">' + esc(o.q) + '</div>' +
