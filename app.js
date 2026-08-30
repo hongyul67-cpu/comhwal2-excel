@@ -233,6 +233,22 @@ function paintGraded(myVal, modelVal, ok) {
 }
 
 /* ---------- 채점 ---------- */
+/* 값만 같으면 정답으로 쳐서 ="우수" · =95 처럼 상수를 적어도 통과했다.
+   이 도구는 «함수를 직접 입력»하는 연습이므로, 모범답안이 쓰는 바깥 함수와
+   셀 참조를 실제로 썼는지까지 본다. (안쪽 계산은 다른 방법도 그대로 허용) */
+function stripText(f) { return String(f == null ? '' : f).replace(/"[^"]*"/g, '""'); }
+function outerFunc(f) { var m = stripText(f).match(/([A-Za-z][A-Za-z0-9.]*)\s*\(/); return m ? m[1].toUpperCase() : ''; }
+function hasCellRef(f) { return /\$?[A-Za-z]{1,3}\$?[0-9]+/.test(stripText(f).replace(/([A-Za-z][A-Za-z0-9.]*)\s*\(/g, '(')); }
+function shapeHint(raw, answer) {
+  if (!hasCellRef(raw)) return '값을 직접 적지 말고 <b>셀 주소</b>로 계산하세요. (예: B2)';
+  var need = outerFunc(answer);
+  if (need) {
+    var used = [], src = stripText(raw), re = /([A-Za-z][A-Za-z0-9.]*)\s*\(/g, m;
+    while ((m = re.exec(src))) used.push(m[1].toUpperCase());
+    if (used.indexOf(need) < 0) return '<b>' + need + '</b> 함수를 써서 풀어 보세요.';
+  }
+  return null;
+}
 function valEqual(a, b) {
   if (typeof a === 'number' && typeof b === 'number') return Math.abs(a - b) < 1e-9;
   // 숫자 문자열 허용
@@ -245,6 +261,8 @@ function checkAnswer() {
   var p = state.queue[state.idx];
   var raw = $('fx').value.trim();
   if (!raw) { flash('수식을 입력하세요. (예: =IF(...))', 'no'); return; }
+  var shape = shapeHint(raw, p.answer);
+  if (shape) { flash('<b>✋ 잠깐요</b> · ' + shape, 'no'); return; }
   var stu = XLEngine.evaluate(raw, p.grid);
   var model = XLEngine.evaluate(p.answer, p.grid);
   if ('error' in stu) {
@@ -399,6 +417,7 @@ function gradeOne(p, raw) {
   var model = XLEngine.evaluate(p.answer, p.grid);
   var modelVal = ('error' in model) ? null : model.value;
   if (!raw || !raw.trim()) return { ok: false, my: '(미응답)', model: modelVal === null ? '-' : fmt(modelVal) };
+  if (!hasCellRef(raw)) return { ok: false, my: raw + ' (셀 참조 없음)', model: modelVal === null ? '-' : fmt(modelVal) };
   var stu = XLEngine.evaluate(raw, p.grid);
   if ('error' in stu) return { ok: false, my: '수식 오류 ' + stu.error, model: modelVal === null ? '-' : fmt(modelVal) };
   var ok = (modelVal !== null) && valEqual(stu.value, modelVal);
