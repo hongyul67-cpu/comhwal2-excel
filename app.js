@@ -234,19 +234,26 @@ function paintGraded(myVal, modelVal, ok) {
 
 /* ---------- 채점 ---------- */
 /* 값만 같으면 정답으로 쳐서 ="우수" · =95 처럼 상수를 적어도 통과했다.
-   이 도구는 «함수를 직접 입력»하는 연습이므로, 모범답안이 쓰는 바깥 함수와
-   셀 참조를 실제로 썼는지까지 본다. (안쪽 계산은 다른 방법도 그대로 허용) */
+   이 도구는 «함수를 직접 입력»하는 연습이므로, 모범답안이 쓰는 함수와
+   셀 참조를 실제로 썼는지까지 본다.
+
+   표가 한 줄뿐이라 조건을 덜 쓴 수식도 값이 같아 통과하는 문제도 있었다.
+   («모두 80 이상» 인데 =IF(B2>=80,…) 처럼 한쪽만 봐도 통과)
+   그래서 바깥 함수만이 아니라 모범답안이 쓰는 함수를 전부 요구한다.
+   틀렸다고 채점하지 않고 «다시 쳐 보세요» 로만 알려 주므로,
+   다른 방법으로 푼 학생이 점수를 잃지는 않는다. */
 function stripText(f) { return String(f == null ? '' : f).replace(/"[^"]*"/g, '""'); }
-function outerFunc(f) { var m = stripText(f).match(/([A-Za-z][A-Za-z0-9.]*)\s*\(/); return m ? m[1].toUpperCase() : ''; }
+function funcsIn(f) {
+  var out = [], re = /([A-Za-z][A-Za-z0-9.]*)\s*\(/g, m, src = stripText(f);
+  while ((m = re.exec(src))) { var n = m[1].toUpperCase(); if (out.indexOf(n) < 0) out.push(n); }
+  return out;
+}
 function hasCellRef(f) { return /\$?[A-Za-z]{1,3}\$?[0-9]+/.test(stripText(f).replace(/([A-Za-z][A-Za-z0-9.]*)\s*\(/g, '(')); }
 function shapeHint(raw, answer) {
   if (!hasCellRef(raw)) return '값을 직접 적지 말고 <b>셀 주소</b>로 계산하세요. (예: B2)';
-  var need = outerFunc(answer);
-  if (need) {
-    var used = [], src = stripText(raw), re = /([A-Za-z][A-Za-z0-9.]*)\s*\(/g, m;
-    while ((m = re.exec(src))) used.push(m[1].toUpperCase());
-    if (used.indexOf(need) < 0) return '<b>' + need + '</b> 함수를 써서 풀어 보세요.';
-  }
+  var need = funcsIn(answer), used = funcsIn(raw), miss = [];
+  for (var i = 0; i < need.length; i++) if (used.indexOf(need[i]) < 0) miss.push(need[i]);
+  if (miss.length) return '<b>' + miss.join('</b>, <b>') + '</b> 함수를 써서 풀어 보세요.';
   return null;
 }
 function valEqual(a, b) {
