@@ -92,7 +92,7 @@
     Array.prototype.forEach.call($('stBody').querySelectorAll('.stp.pick'), function (el) {
       function go() { pickStep(S.bank[+el.getAttribute('data-i')]); }
       el.onclick = go;
-      /* 전자칠판은 터치라 클릭으로 되지만, 키보드·리모컨으로도 고를 수 있어야 한다 */
+      /* 교실 큰 화면은 터치라 클릭으로 되지만, 키보드·리모컨으로도 고를 수 있어야 한다 */
       el.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
     });
   }
