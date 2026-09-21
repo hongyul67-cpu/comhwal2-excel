@@ -19,9 +19,16 @@ PINK = "FCE4EC"
 thin = Side(style="thin", color="BFBFBF")
 BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
 
+def astext(c):
+    """설명 글이 = 로 시작하면 수식이 아니라 '글자' 로 저장한다"""
+    if isinstance(c.value, str) and c.value.startswith("="):
+        c.data_type = "s"
+    return c
+
+
 def hdr(ws, row, values, start_col=1, fill=BLUE):
     for i, v in enumerate(values):
-        c = ws.cell(row=row, column=start_col + i, value=v)
+        c = astext(ws.cell(row=row, column=start_col + i, value=v))
         c.font = Font(bold=True, color="FFFFFF", size=11)
         c.fill = PatternFill("solid", fgColor=fill)
         c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -50,14 +57,14 @@ def blank(ws, row, cols, fill=YEL):
 
 def title(ws, row, text, span=8, size=14, color=NAVY):
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=span)
-    c = ws.cell(row=row, column=1, value=text)
+    c = astext(ws.cell(row=row, column=1, value=text))
     c.font = Font(bold=True, size=size, color=color)
     c.alignment = Alignment(horizontal="left", vertical="center")
     ws.row_dimensions[row].height = 26
 
 def note(ws, row, text, span=8, color="806000", fill="FFF8E1"):
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=span)
-    c = ws.cell(row=row, column=1, value=text)
+    c = astext(ws.cell(row=row, column=1, value=text))
     c.font = Font(size=10, color=color)
     c.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
     c.fill = PatternFill("solid", fgColor=fill)
@@ -73,7 +80,7 @@ def guide_sheet(wb, lines, sheet_title="읽어보기"):
     ws.sheet_view.showGridLines = False
     r = 2
     for kind, text in lines:
-        c = ws.cell(row=r, column=2, value=text)
+        c = astext(ws.cell(row=r, column=2, value=text))
         c.alignment = Alignment(vertical="center", wrap_text=True)
         if kind == "h1":
             c.font = Font(bold=True, size=16, color=NAVY); ws.row_dimensions[r].height = 30
