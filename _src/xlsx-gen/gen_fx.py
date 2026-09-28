@@ -3,6 +3,7 @@
 
   node export_web.js      → out/web_problems.json   (웹 데이터 그대로)
   python gen_fx.py out    → out/fx/2급_함수연습_01_논리_v1.xlsx … 8개
+  node export_web.js 1 · python gen_fx.py out 1   → 1급 out/fx1/1급_함수연습_… 10개
 
 · 문제 하나 = 시트 하나. 표는 A1 부터 놓아 **웹 화면과 칸 주소가 똑같다** (웹에서 E2 면 엑셀도 E2).
 · 여러 명 표는 첫 칸에 수식을 넣고 채우기 핸들로 끌어내린다. 칸마다 채점한다.
@@ -12,6 +13,7 @@
 import sys, os, json, re, datetime as dt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_lib import *
+from openpyxl.worksheet.formula import ArrayFormula
 
 CATS = [  # 웹 범위 이름, 파일 키, 짧은 이름
     ("논리(IF)", "logic", "논리"),
@@ -23,6 +25,13 @@ CATS = [  # 웹 범위 이름, 파일 키, 짧은 이름
     ("데이터베이스", "db", "DB함수"),
     ("날짜", "date", "날짜"),
 ]
+CATS1 = [
+    ("논리(IF)", "logic", "논리"), ("통계", "stat", "통계"), ("조건부 집계", "cond", "조건부집계"),
+    ("찾기·참조", "lookup", "찾기참조"), ("문자열", "text", "문자열"), ("수학·반올림", "math", "수학반올림"),
+    ("배열수식", "array", "배열수식"), ("날짜", "date", "날짜"), ("다중 조건(IFS)", "ifs", "다중조건"),
+    ("데이터베이스", "db", "DB함수"),
+]
+GRADE = "2"
 VER = "v1"
 ANS_COL, CHK_COL = 27, 28          # AA · AB (숨김)
 INFO = 8                           # H열부터 문제 설명
@@ -30,12 +39,8 @@ DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 TIME_RE = re.compile(r"^(\d{2}):(\d{2}):(\d{2})$")
 
 
-def fname(i, key):
-    return "g2-fx-%02d-%s.xlsx" % (i, key)
-
-
 def dlname(i, short):
-    return "2급_함수연습_%02d_%s_%s.xlsx" % (i, short, VER)
+    return "%s급_함수연습_%02d_%s_%s.xlsx" % (GRADE, i, short, VER)
 
 
 def cellval(v):
@@ -99,9 +104,11 @@ def problem_sheet(wb, no, p):
     ws.column_dimensions[get_column_letter(tcol)].width = 14
     ws.column_dimensions[get_column_letter(ncol + 1)].width = 3
 
-    # ── 숨은 채점 기준
+    # ── 숨은 채점 기준 (배열 수식 문제는 엑셀에서도 배열 수식으로 — Ctrl+Shift+Enter 로 넣은 것과 같게)
+    arr = p["cat"] == "배열수식"
     for x in p["rows"]:
-        ws.cell(row=x["r"], column=ANS_COL, value=fx(x["formula"]))
+        a = "%s%d" % (get_column_letter(ANS_COL), x["r"])
+        ws[a] = ArrayFormula(a, fx(x["formula"])) if arr else fx(x["formula"])
         ws.cell(row=x["r"], column=CHK_COL,
                 value=fx(row_check("%s%d" % (p["col"], x["r"]), "%s%d" % (get_column_letter(ANS_COL), x["r"]))))
     hide_helpers(ws, ANS_COL, CHK_COL)
@@ -158,7 +165,7 @@ def problem_sheet(wb, no, p):
 def build(cat, idx, key, short, probs, outdir):
     wb = Workbook()
     guide_sheet(wb, [
-        ("h1", "컴활 2급 실기 · 함수 연습 — %s (%d문제)" % (short, len(probs))),
+        ("h1", "컴활 %s급 실기 · 함수 연습 — %s (%d문제)" % (GRADE, short, len(probs))),
         ("p", "웹 「함수 연습소」의 [%s] 범위와 똑같은 문제입니다. 번호도, 표도, 칸 주소도 같습니다." % cat),
         ("p", "웹에서는 한 문제씩, 여기서는 진짜 엑셀로 한꺼번에 풀어 봅니다."),
         ("h2", "푸는 법"),
@@ -211,12 +218,17 @@ def build(cat, idx, key, short, probs, outdir):
         ans.cell(row=r, column=5).alignment = Alignment(vertical="center", wrap_text=True)
         lit(ans, r, 4, p["answer"], bold=True, color="1F4E79")
         ans.row_dimensions[r].height = 30
-    return save(wb, os.path.join(outdir, "fx", dlname(idx, short)))
+    if cat == "배열수식":
+        note(wb["읽어보기"], 14, "배열 수식은 수식을 다 쓴 뒤 Enter 가 아니라 Ctrl + Shift + Enter 로 마칩니다. "
+                                "수식 양옆에 { } 가 저절로 붙으면 제대로 들어간 것입니다(직접 치면 안 됩니다).", span=2)
+    return save(wb, os.path.join(outdir, "fx" if GRADE == "2" else "fx1", dlname(idx, short)))
 
 
 if __name__ == "__main__":
     outdir = sys.argv[1] if len(sys.argv) > 1 else "out"
-    data = json.load(open(os.path.join(outdir, "web_problems.json"), encoding="utf-8"))
+    if len(sys.argv) > 2 and sys.argv[2] == "1":
+        GRADE, CATS = "1", CATS1
+    data = json.load(open(os.path.join(outdir, "web_problems.json" if GRADE == "2" else "web_problems_1.json"), encoding="utf-8"))
     for i, (cat, key, short) in enumerate(CATS, 1):
         probs = [p for p in data if p["cat"] == cat]
         build(cat, i, key, short, probs, outdir)

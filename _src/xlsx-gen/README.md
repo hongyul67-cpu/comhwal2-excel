@@ -12,8 +12,14 @@ python gen_fx.py out         # 수업 범위별 함수 연습 8개 (out/fx) — 
 python verify_fx.py out      # ★ 검산 — 모범답안이 전부 ✔, 엑셀 값 = 웹 엔진 값, $ 빼면 ✘
 python gen_mock.py out       # 실전 모의고사 3회 (out/mock)
 python verify_mock.py out    # ★ 검산 — 입력·고급필터·계산·목표값/통합/정렬을 실제로 해서 100점이 되는지
+node export_web.js 1 ; python gen_fx.py out 1 ; python verify_fx.py out 1   # 1급 범위별 10개 (out/fx1)
+python gen_mock1.py out ; python verify_mock1.py out                       # 1급 실전 모의고사 3회 (out/mock1)
 python deploy_files.py       # out/ → 두 저장소의 files/ 복사 + excel-files.html 다시 생성
 ```
+
+1급 웹 데이터는 옆 폴더 `컴활1급 실기 엑셀함수/data/fill.js` (여러 명 표). 1급 배열 수식 문제는 엑셀 파일 안 숨은 정답도
+배열 수식(ArrayFormula)으로 넣는다. 1급 모의고사의 VBA 는 폼을 .xlsx 에 못 넣어 단추·InputBox·이벤트로 대신한다.
+사용자 정의 함수 채점은 결과값으로 한다(검산에서는 VBA 프로젝트 접근이 보안 설정이라 같은 값을 내는 수식으로만 확인).
 
 **웹 문제를 고치면** `node export_web.js → gen_fx.py → verify_fx.py → deploy_files.py` 를 다시 돌립니다
 (엑셀 범위별 파일이 웹 데이터로 만들어지므로). 웹 앱은 `app.js` 의 `FX_FILES` 순서로 파일 번호를 찾습니다.

@@ -264,31 +264,43 @@ FX_CATS = [("logic", "논리", "IF · AND · OR · NOT · IFERROR"), ("stat", "�
            ("db", "DB함수", "DSUM · DAVERAGE · DCOUNT"), ("date", "날짜", "YEAR · WEEKDAY · DAYS")]
 MOCK = [(1, "설비 보전", "고급 필터 · 부분합 · 목표값 찾기"), (2, "생산 라인", "조건부 서식 · 피벗 · 통합"),
         (3, "자재 창고", "고급 필터(또는) · 시나리오 · 정렬")]
+FX_CATS1 = [("logic", "논리", "IF · AND · OR · IFERROR"), ("stat", "통계", "순위 · 평균 · 표준편차"),
+            ("cond", "조건부집계", "COUNTIF · SUMIF · AVERAGEIF"), ("lookup", "찾기참조", "VLOOKUP · INDEX · MATCH"),
+            ("text", "문자열", "LEFT · MID · FIND · REPLACE"), ("math", "수학반올림", "ROUND 계열 · INT · MOD"),
+            ("array", "배열수식", "SUM((조건)*범위) · Ctrl+Shift+Enter"), ("date", "날짜", "YEAR · WEEKDAY · DAYS"),
+            ("ifs", "다중조건", "COUNTIFS · SUMIFS · MAXIFS"), ("db", "DB함수", "DSUM · DAVERAGE · DCOUNTA")]
+MOCK1 = [(1, "공정 품질", "배열 수식 · 사용자 정의 함수 · 데이터 표"), (2, "출하 실적", "수식 조건 고급 필터 · 피벗 그룹 · 통합"),
+         (3, "설비 가동", "인쇄 설정 · Select Case · 중복 제거")]
 
 
-def pre_2급(repo):
+def pre_1급(repo):
+    return pre_2급(repo, g1=True)
+
+
+def pre_2급(repo, g1=False):
     import json
-    probs = json.load(open(OUT / "web_problems.json", encoding="utf-8"))
+    probs = json.load(open(OUT / ("web_problems_1.json" if g1 else "web_problems.json"), encoding="utf-8"))
     names = {"logic": "논리(IF)", "stat": "통계", "cond": "조건부 집계", "math": "수학·반올림", "text": "문자열",
-             "lookup": "찾기·참조", "db": "데이터베이스", "date": "날짜"}
+             "lookup": "찾기·참조", "db": "데이터베이스", "date": "날짜", "array": "배열수식", "ifs": "다중 조건(IFS)"}
+    G, cats, mocks = ("1", FX_CATS1, MOCK1) if g1 else ("2", FX_CATS, MOCK)
     (repo / "files" / "fx").mkdir(parents=True, exist_ok=True)
     (repo / "files" / "mock").mkdir(parents=True, exist_ok=True)
     fx = []
-    for i, (key, short, fns) in enumerate(FX_CATS, 1):
-        src = OUT / "fx" / ("2급_함수연습_%02d_%s_v1.xlsx" % (i, short))
-        name = "g2-fx-%02d-%s.xlsx" % (i, key)
+    for i, (key, short, fns) in enumerate(cats, 1):
+        src = OUT / ("fx1" if g1 else "fx") / ("%s급_함수연습_%02d_%s_v1.xlsx" % (G, i, short))
+        name = "g%s-fx-%02d-%s.xlsx" % (G, i, key)
         shutil.copyfile(src, repo / "files" / "fx" / name)
         n = sum(1 for p in probs if p["cat"] == names[key])
         fx.append('    <a class="fx" href="files/fx/%s" download="%s">⬇ %s<span>%d문제 · %s</span></a>'
                   % (name, src.name, short, n, html.escape(fns)))
     mk = []
-    for no, theme, what in MOCK:
-        src = OUT / "mock" / ("2급_실전모의고사_제%d회_v1.xlsx" % no)
-        name = "g2-mock-%02d.xlsx" % no
+    for no, theme, what in mocks:
+        src = OUT / ("mock1" if g1 else "mock") / ("%s급_실전모의고사_제%d회_v1.xlsx" % (G, no))
+        name = "g%s-mock-%02d.xlsx" % (G, no)
         shutil.copyfile(src, repo / "files" / "mock" / name)
-        mk.append('    <a class="mk" href="files/mock/%s" download="%s">⬇ 제%d회 · %s<span>%s<br>40분 · 100점 · 자동 채점표</span></a>'
-                  % (name, src.name, no, theme, html.escape(what)))
-    return ('''  <h2 id="fx">📗 함수 연습 — 수업 범위별 (웹 연습소와 같은 문제)</h2>
+        mk.append('    <a class="mk" href="files/mock/%s" download="%s">⬇ 제%d회 · %s<span>%s<br>%s분 · 100점 · 자동 채점표</span></a>'
+                  % (name, src.name, no, theme, html.escape(what), "45" if g1 else "40"))
+    return ('''  <h2 id="fx">📗 함수 연습 — 수업 범위별 %d개 (웹 연습소와 같은 문제)</h2>
   <div class="fcard">
     <div class="fdesc">웹 「함수 연습소」는 <b>한 문제씩</b>, 여기는 같은 문제를 <b>진짜 엑셀로 한꺼번에</b> 풉니다.
       번호·표·칸 주소가 웹과 똑같습니다. 표에 여러 명이 있어서 <b>첫 칸에 수식 → 채우기 핸들로 끌어내리기</b>를 하면
@@ -299,14 +311,19 @@ def pre_2급(repo):
   </div>
   <h2 id="mock">📝 실전 모의고사 — 파일 하나가 시험 한 회</h2>
   <div class="fcard">
-    <div class="fdesc">실제 시험과 같은 시트(기본작업-1 ~ 기타작업-2) · 같은 배점 · <b>40분 · 70점 합격</b>.
-      [문제지] 시트를 보고 풀고, 다 하면 [채점표] 에서 점수를 봅니다. 자료 입력·계산작업·고급 필터·목표값·통합·정렬은
-      <b>자동 채점</b>, 서식·부분합·피벗·매크로·차트는 [확인 방법]을 보고 <b>O / X</b> 를 고릅니다.</div>
+    <div class="fdesc">실제 시험과 같은 시트(%s) · 같은 배점 · <b>%s분 · 70점 합격</b>.
+      [문제지] 시트를 보고 풀고, 다 하면 [채점표] 에서 점수를 봅니다.<br>
+      <b>자동 채점</b> — %s<br><b>스스로 채점</b> — %s ([확인 방법]을 보고 O / X)%s</div>
     <div class="mock">
 %s
     </div>
   </div>
-''' % ("\n".join(fx), "\n".join(mk)))
+''' % (len(cats), "\n".join(fx),
+       "기본작업-1 ~ 기타작업-3" if g1 else "기본작업-1 ~ 기타작업-2", "45" if g1 else "40",
+       "고급 필터·계산작업(사용자 정의 함수 포함)·데이터 표·통합·중복 제거" if g1 else "자료 입력·계산작업·고급 필터·목표값·통합·정렬",
+       "조건부 서식·인쇄/보호·피벗·차트·매크로·VBA" if g1 else "서식·부분합·피벗·매크로·차트",
+       "<br>※ 1급 VBA 는 실제 시험에서 미리 만든 입력 폼을 쓰지만, 이 파일에는 폼을 넣을 수 없어 단추·InputBox·이벤트로 같은 문법을 연습합니다." if g1 else "",
+       "\n".join(mk)))
 
 
 def build(repo_folder, badge, page_title, items, pre=None):
@@ -330,5 +347,5 @@ def build(repo_folder, badge, page_title, items, pre=None):
 
 
 build("컴활2급 실기 엑셀함수", "컴퓨터활용능력 2급", "컴활 2급 · 엑셀 예제파일", [THEORY] + G2, pre=pre_2급)
-build("컴활1급 실기 엑셀함수", "컴퓨터활용능력 1급", "컴활 1급 · 엑셀 예제파일", [THEORY] + G1)
+build("컴활1급 실기 엑셀함수", "컴퓨터활용능력 1급", "컴활 1급 · 엑셀 예제파일", [THEORY] + G1, pre=pre_1급)
 print("완료")

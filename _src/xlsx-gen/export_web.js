@@ -1,10 +1,12 @@
 /* 함수 연습소(웹) 문제를 그대로 JSON 으로 뽑는다 → gen_fx.py 가 수업 범위별 엑셀을 굽는다.
- *   node export_web.js            (이 폴더에서)
+ *   node export_web.js            (이 폴더에서) → 2급  out/web_problems.json
+ *   node export_web.js 1          → 1급 (옆 폴더 '컴활1급 실기 엑셀함수')  out/web_problems_1.json
  * 웹과 엑셀의 문제·표·칸 주소가 똑같도록, 웹 데이터 파일을 그대로 읽는다.
  * 여러 칸 문제는 칸마다 «끌어내렸을 때의 모범답안»을 refshift.js 로 미리 만들어 둔다.
  */
 const fs = require('fs'), path = require('path');
-const ROOT = path.resolve(__dirname, '..', '..');
+const G1 = process.argv[2] === '1';
+const ROOT = G1 ? path.resolve(__dirname, '..', '..', '..', '컴활1급 실기 엑셀함수') : path.resolve(__dirname, '..', '..');
 global.window = {};
 for (const f of ['engine.js', 'refshift.js', 'data/problems.js', 'data/problems-plus.js', 'data/fill.js'])
   eval(fs.readFileSync(path.join(ROOT, f), 'utf8'));
@@ -24,7 +26,7 @@ const out = window.XL_PROBLEMS.map(p => {
   return { id: p.id, cat: p.cat, title: p.title, prompt: plain(p.prompt), hint: plain(p.hint),
            answer: p.answer, grid: p.grid, col: t.col, c: t.c + 1, rows };
 });
-const dst = path.join(__dirname, 'out', 'web_problems.json');
+const dst = path.join(__dirname, 'out', G1 ? 'web_problems_1.json' : 'web_problems.json');
 fs.mkdirSync(path.dirname(dst), { recursive: true });
 fs.writeFileSync(dst, JSON.stringify(out, null, 1), 'utf8');
 console.log('문제', out.length, '→', dst);

@@ -11,7 +11,8 @@ sys.stdout.reconfigure(encoding='utf-8')
 import win32com.client as w
 
 out = sys.argv[1] if len(sys.argv) > 1 else "out"
-WEB = {p["title"]: p for p in json.load(open(os.path.join(out, "web_problems.json"), encoding="utf-8"))}
+G1 = len(sys.argv) > 2 and sys.argv[2] == "1"          # python verify_fx.py out 1  → 1급
+WEB = {p["title"]: p for p in json.load(open(os.path.join(out, "web_problems_1.json" if G1 else "web_problems.json"), encoding="utf-8"))}
 
 
 def same(xv, wv):
@@ -34,7 +35,7 @@ def same(xv, wv):
 x = w.DispatchEx("Excel.Application"); x.Visible = False; x.DisplayAlerts = False
 bad = 0
 try:
-    for path in sorted(glob.glob(os.path.join(out, "fx", "*.xlsx"))):
+    for path in sorted(glob.glob(os.path.join(out, "fx1" if G1 else "fx", "*.xlsx"))):
         wb = x.Workbooks.Open(os.path.abspath(path))
         x.CalculateFullRebuild()
         print("=" * 70); print(os.path.basename(path))
@@ -60,7 +61,10 @@ try:
             if not p:
                 print("  ! 웹 문제 못 찾음", s.Name); bad += 1; continue
             for rr in p["rows"]:
-                s.Range("%s%d" % (p["col"], rr["r"])).Formula = s.Range("AA%d" % rr["r"]).Formula
+                src = s.Range("AA%d" % rr["r"])
+                dst = s.Range("%s%d" % (p["col"], rr["r"]))
+                if src.HasArray: dst.FormulaArray = src.FormulaArray
+                else: dst.Formula = src.Formula
         x.CalculateFullRebuild()
         for s in sheets:
             title = s.Name[3:]
