@@ -71,6 +71,25 @@
   table.sheet td.tcell .cv{font-weight:800;font-size:13.5px}
   table.sheet td.tcell .cv2{font-size:11px;font-weight:700;color:var(--gold);margin-top:3px;opacity:.95}
   table.sheet td.tcell .cv2.errcode{color:#ff9aa5;font-family:'Consolas',monospace;opacity:1}
+  /* 여러 칸 — 채우기 핸들 */
+  table.sheet td.tcell.empty{background:#1a1f3a;outline:1px dashed var(--gold);outline-offset:-3px;color:var(--tx2)}
+  table.sheet td.tcell.fillprev{background:rgba(255,210,63,.18);outline:2px dashed var(--gold)}
+  table.sheet td.tcell.sel{box-shadow:inset 0 0 0 3px var(--pri2)}
+  table.sheet td.tcell .fh{position:absolute;right:0;bottom:0;width:11px;height:11px;background:var(--gold);
+    border:2px solid #0f1220;cursor:ns-resize;z-index:3;touch-action:none;display:block}
+  table.sheet td.tcell .fh::after{content:"";position:absolute;left:-9px;top:-9px;right:0;bottom:0}
+  .fillnote{margin-top:9px;font-size:13px;color:var(--tx2);line-height:1.55}
+  .fillnote b{color:var(--gold)}
+  .cellfx{font-size:13px;color:var(--tx2);margin:-6px 0 12px 2px;min-height:18px;line-height:1.6}
+  .cellfx code{font-family:'Consolas',monospace;background:#12162b;border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--tx)}
+  .cellfx .cfaddr{color:var(--pri2);font-weight:800} .cellfx .cfhint{font-size:12px}
+  .xlbox{margin-top:12px;background:rgba(39,192,147,.09);border:1px solid rgba(39,192,147,.35);border-radius:10px;
+    padding:10px 12px;font-size:13px;line-height:1.7;color:var(--tx2)}
+  .xlbox b{color:var(--tx)} .xlbox a{color:#5fe0bb;font-weight:700}
+  a.xldl{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;text-decoration:none;
+    background:#17694a;color:#fff;border-radius:11px;padding:11px 14px;font-size:14px;font-weight:700}
+  a.xldl span{font-size:12px;font-weight:500;opacity:.9}
+  a.xldl:hover{background:#1d8a60}
   .livehint{font-size:12px;color:var(--tx2);margin:-8px 0 12px 2px;line-height:1.5}
   .livehint b{color:var(--gold)}
 
@@ -133,8 +152,6 @@
     cursor:pointer;color:var(--tx);text-align:left;display:flex;flex-direction:column;gap:3px;transition:.12s}
   .exbtn:hover{border-color:var(--ok);transform:translateY(-2px)}
   .exbtn b{font-size:14px} .exbtn span{font-size:11.5px;color:var(--tx2);line-height:1.45}
-  #timerLabel{font-variant-numeric:tabular-nums}
-  #timerLabel.warn{color:var(--no);border-color:var(--no);animation:tblink 1s steps(2,start) infinite}
   @keyframes tblink{50%{opacity:.55}}
 
   .result{text-align:center}
@@ -174,8 +191,8 @@
         <div class="mcard" id="mcPractice" onclick="pickMode('practice')">
           <b>📚 혼자 연습 (랜덤)</b><span>문제가 <b style="color:var(--pri2)">섞여서</b> 나와요 · 바로 채점 · 힌트·모범답안</span>
         </div>
-        <div class="mcard" id="mcExam" onclick="pickMode('exam')">
-          <b>⏱️ 실전 모드</b><span>제한 시간 · 힌트 없이 · <b style="color:var(--ok)">70점 이상 합격</b> · 풀이는 제출 후</span>
+        <div class="mcard" id="mcMock" onclick="location.href='excel-files.html#mock'">
+          <b>📝 실전 모의고사 (엑셀)</b><span>진짜 시험처럼 <b style="color:var(--ok)">엑셀 파일 하나에 4작업</b> · 40분 · 70점 합격 · 내려받아 각자 풀기</span>
         </div>
         <div class="mcard st" id="mcSteps" onclick="pickMode('steps')">
           <b>🧰 작업 순서 (함수 말고)</b><span>기본·분석·기타 작업 — <b style="color:#b79bff">부분합·피벗·고급필터·차트·매크로</b>를 <b>손 순서</b>로</span>
@@ -188,6 +205,7 @@
         <div class="row" style="margin-top:14px">
           <button class="btn" style="flex:1" onclick="startClass()">함께 풀기 시작 ▶</button>
         </div>
+        <div id="xlRowC"></div>
         <div class="note" style="border-left-color:var(--gold)">
           <b>수업용</b> · 문제 순서가 <b>절대 섞이지 않아요</b>. 선생님 화면과 학생 화면의 <b>1번 문제가 같습니다</b>.<br>
           <b>← 이전</b>으로 되돌아갈 수 있고, <b>번호 선택</b>으로 원하는 문제로 바로 이동할 수 있어요.
@@ -200,9 +218,11 @@
         <div class="row" style="margin-top:14px">
           <button class="btn" style="flex:1" onclick="startPractice()">랜덤 연습 시작 ▶</button>
         </div>
+        <div id="xlRowP"></div>
         <div class="note">
           <b>사용법</b> · 노란색 셀에 들어갈 <b>수식</b>을 아래 입력줄에 <kbd>=</kbd>로 시작해 입력하고 <kbd>Enter</kbd>.<br>
-          입력하는 동안 <b>노란 칸에 계산 결과가 실시간으로</b> 나타나요. 서로 다른 수식이어도 <b>결과값이 맞으면 정답</b>입니다.
+          입력하는 동안 <b>노란 칸에 계산 결과가 실시간으로</b> 나타나요. 노란 칸이 여러 줄이면 <b>채우기 핸들(■)을 끌어내려</b> 사람마다 결과를 냅니다.<br>
+          웹은 <b>한 문제씩</b> 바로 채점 · 여러 문제를 한꺼번에 풀 때는 <b>범위별 엑셀 파일</b>을 내려받아 각자 풉니다.
         </div>
       </div>
 
@@ -220,21 +240,13 @@
         </div>
       </div>
 
-      <div id="examPanel" class="hidden">
-        <h2>실전 시험 선택</h2>
-        <div class="exopts" id="examOpts"></div>
-        <div class="note" style="border-left-color:var(--warn)">
-          <b>실전 모드 규칙</b> · 실제 시험처럼 <b>힌트·모범답안 없이</b> 풀고, 정답 여부도 알려주지 않아요.<br>
-          제한 시간이 끝나면 자동 제출되고, 그때 <b>점수 · 합격/불합격 · 전체 풀이</b>가 나옵니다.
-        </div>
-      </div>
     </div>
     <a href="excel-files.html"
        style="display:block;margin-top:16px;text-align:center;text-decoration:none;
               background:linear-gradient(135deg,#17694a,#27c093);color:#fff;border-radius:13px;
               padding:14px 16px;font-size:15px;font-weight:800;box-shadow:0 6px 18px rgba(39,192,147,.22)">
       📗 엑셀 예제파일 내려받기
-      <span style="display:block;font-size:12px;font-weight:500;opacity:.92;margin-top:4px">생산일보 · 자재입출고 · 설비점검 — 노란 칸을 진짜 엑셀에서 채워 보세요</span></a>
+      <span style="display:block;font-size:12px;font-weight:500;opacity:.92;margin-top:4px">범위별 함수 연습 8개 · 실전 모의고사 · 작업별 예제 — 한 사람씩 내려받아 진짜 엑셀에서</span></a>
     <div style="text-align:center;margin-top:14px">
       <button type="button" id="openBoard"
         style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:6px">
@@ -249,7 +261,6 @@
       <button class="btn ghost" style="padding:8px 12px" onclick="quitPractice()">← 나가기</button>
       <div class="chip2" id="progLabel">1 / 14</div>
       <div class="pgbar"><i id="pgFill"></i></div>
-      <div class="chip2 hidden" id="timerLabel">⏱ 40:00</div>
       <div class="chip2" id="scoreLabel">0점</div>
     </div>
     <div class="pcard">
@@ -257,7 +268,8 @@
       <div class="ptitle" id="pTitle"></div>
       <div class="prompt" id="pPrompt"></div>
       <div class="gridwrap"><table class="sheet" id="sheet"></table></div>
-      <div class="livehint">🟡 노란 칸 = 지금 입력한 수식의 <b>실제 계산 결과</b>가 바로 나타납니다. (엑셀처럼 확인해 보세요)</div>
+      <div class="cellfx" id="cellfx"></div>
+      <div class="livehint">🟡 노란 칸 = 지금 입력한 수식의 <b>실제 계산 결과</b>가 바로 나타납니다. 여러 칸이면 <b>■</b>를 아래로 끌어 채우세요 (두 번 누르면 끝까지).</div>
       <div class="fxbar">
         <div class="fxlabel">fx</div>
         <input id="fx" type="text" placeholder="=  여기에 수식 입력 후 Enter" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -290,8 +302,10 @@
 </div>
 
 <script src="engine.js"></script>
+<script src="refshift.js"></script>
 <script src="data/problems.js"></script>
 <script src="data/problems-plus.js"></script>
+<script src="data/fill.js"></script>
 <script src="data/steps.js"></script>
 <!-- 공용 계급·랭크포인트 (개념게임과 같은 저장소를 써서 계급이 함께 오름) -->
 <script src="https://hongyul67-cpu.github.io/comhwal2/rank.js"></script><!-- 전체 주소: 로컬 폴더 이름과 무관하게 열리도록 -->

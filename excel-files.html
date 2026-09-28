@@ -57,6 +57,18 @@
   .back{display:inline-block;margin-bottom:14px;color:var(--tx2);text-decoration:none;font-size:14px;
     background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 14px}
   .back:hover{color:var(--tx);border-color:var(--pri)}
+  .grid8{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+  @media(max-width:700px){.grid8{grid-template-columns:repeat(2,1fr)}}
+  a.fx{display:block;text-decoration:none;background:var(--card2);border:1px solid var(--line);border-radius:11px;
+    padding:11px 12px;color:var(--tx);font-size:14px;font-weight:700;transition:.12s}
+  a.fx:hover{border-color:var(--ok);transform:translateY(-2px)}
+  a.fx span{display:block;font-size:11.5px;font-weight:500;color:var(--tx2);margin-top:3px}
+  .mock{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+  @media(max-width:700px){.mock{grid-template-columns:1fr}}
+  a.mk{display:block;text-decoration:none;background:linear-gradient(135deg,#243a7a,#2c2a66);border:1px solid var(--line);
+    border-radius:13px;padding:14px 15px;color:#fff;font-weight:800;font-size:15px}
+  a.mk span{display:block;font-size:12px;font-weight:500;opacity:.85;margin-top:4px;line-height:1.5}
+  a.mk:hover{border-color:var(--gold)}
   .footer{text-align:center;color:var(--tx2);font-size:12px;margin-top:26px;line-height:1.8}
 </style>
 </head>
@@ -66,9 +78,9 @@
 
   <div class="hero">
     <div class="badge">컴퓨터활용능력 2급</div>
-    <h1>엑셀 예제파일 내려받기</h1>
+    <h1>엑셀 파일 내려받기</h1>
     <div class="lead">
-      웹에서 푸는 연습소와 달리, 이 파일들은 <b>진짜 엑셀에서 직접 해 보는</b> 자료입니다.<br>
+      웹에서 푸는 연습소와 달리, 이 파일들은 <b>진짜 엑셀에서 직접 해 보는</b> 자료입니다. <b>한 사람씩 내려받아 각자</b> 씁니다.<br>
       자료는 모두 <b>제조 현장</b>(생산일보 · 자재 입출고 · 설비 점검 · 공정 품질 · 출하 실적)을 소재로 만들었습니다.
     </div>
     <div class="how">
@@ -88,7 +100,35 @@
     </div>
   </div>
 
-  <h2>파일 목록</h2>
+  <h2 id="fx">📗 함수 연습 — 수업 범위별 (웹 연습소와 같은 문제)</h2>
+  <div class="fcard">
+    <div class="fdesc">웹 「함수 연습소」는 <b>한 문제씩</b>, 여기는 같은 문제를 <b>진짜 엑셀로 한꺼번에</b> 풉니다.
+      번호·표·칸 주소가 웹과 똑같습니다. 표에 여러 명이 있어서 <b>첫 칸에 수식 → 채우기 핸들로 끌어내리기</b>를 하면
+      사람마다 결과가 달라집니다. 칸마다 ✔/✘ 가 붙고 [채점표] 시트에 모입니다.</div>
+    <div class="grid8">
+    <a class="fx" href="files/fx/g2-fx-01-logic.xlsx" download="2급_함수연습_01_논리_v1.xlsx">⬇ 논리<span>11문제 · IF · AND · OR · NOT · IFERROR</span></a>
+    <a class="fx" href="files/fx/g2-fx-02-stat.xlsx" download="2급_함수연습_02_통계_v1.xlsx">⬇ 통계<span>18문제 · 평균 · 순위 · 개수 · 중앙값</span></a>
+    <a class="fx" href="files/fx/g2-fx-03-cond.xlsx" download="2급_함수연습_03_조건부집계_v1.xlsx">⬇ 조건부집계<span>10문제 · COUNTIF · SUMIF · AVERAGEIF</span></a>
+    <a class="fx" href="files/fx/g2-fx-04-math.xlsx" download="2급_함수연습_04_수학반올림_v1.xlsx">⬇ 수학반올림<span>13문제 · ROUND 계열 · MOD · INT</span></a>
+    <a class="fx" href="files/fx/g2-fx-05-text.xlsx" download="2급_함수연습_05_문자열_v1.xlsx">⬇ 문자열<span>15문제 · LEFT · MID · 연결 · TRIM</span></a>
+    <a class="fx" href="files/fx/g2-fx-06-lookup.xlsx" download="2급_함수연습_06_찾기참조_v1.xlsx">⬇ 찾기참조<span>10문제 · VLOOKUP · HLOOKUP · INDEX</span></a>
+    <a class="fx" href="files/fx/g2-fx-07-db.xlsx" download="2급_함수연습_07_DB함수_v1.xlsx">⬇ DB함수<span>9문제 · DSUM · DAVERAGE · DCOUNT</span></a>
+    <a class="fx" href="files/fx/g2-fx-08-date.xlsx" download="2급_함수연습_08_날짜_v1.xlsx">⬇ 날짜<span>11문제 · YEAR · WEEKDAY · DAYS</span></a>
+    </div>
+  </div>
+  <h2 id="mock">📝 실전 모의고사 — 파일 하나가 시험 한 회</h2>
+  <div class="fcard">
+    <div class="fdesc">실제 시험과 같은 시트(기본작업-1 ~ 기타작업-2) · 같은 배점 · <b>40분 · 70점 합격</b>.
+      [문제지] 시트를 보고 풀고, 다 하면 [채점표] 에서 점수를 봅니다. 자료 입력·계산작업·고급 필터·목표값·통합·정렬은
+      <b>자동 채점</b>, 서식·부분합·피벗·매크로·차트는 [확인 방법]을 보고 <b>O / X</b> 를 고릅니다.</div>
+    <div class="mock">
+    <a class="mk" href="files/mock/g2-mock-01.xlsx" download="2급_실전모의고사_제1회_v1.xlsx">⬇ 제1회 · 설비 보전<span>고급 필터 · 부분합 · 목표값 찾기<br>40분 · 100점 · 자동 채점표</span></a>
+    <a class="mk" href="files/mock/g2-mock-02.xlsx" download="2급_실전모의고사_제2회_v1.xlsx">⬇ 제2회 · 생산 라인<span>조건부 서식 · 피벗 · 통합<br>40분 · 100점 · 자동 채점표</span></a>
+    <a class="mk" href="files/mock/g2-mock-03.xlsx" download="2급_실전모의고사_제3회_v1.xlsx">⬇ 제3회 · 자재 창고<span>고급 필터(또는) · 시나리오 · 정렬<br>40분 · 100점 · 자동 채점표</span></a>
+    </div>
+  </div>
+
+  <h2 id="ex">📂 작업별 예제 파일 (제조 현장 자료)</h2>
   <div class="fcard">
     <h3>⓪ 엑셀 이론 체험  <span class='tag tag-t'>필기·실기 공통</span></h3>
     <div class="fdesc">필기에서 글자로만 외우는 것을 실제로 눌러 보는 파일입니다. 오류값 7가지가 진짜로 떠 있고, 상대·절대·혼합 참조가 나란히 들어 있습니다.</div>
@@ -105,7 +145,7 @@
   </div>
   <div class="fcard">
     <h3>① 계산작업 — 생산일보 <span class='tag'>함수 49문제</span></h3>
-    <div class="fdesc">라인별 생산 실적 25일치입니다. 표의 노란 열 5개를 채우고, 아래쪽 집계 38문제와 데이터베이스 함수 10문제를 풉니다. 답을 넣으면 옆 칸이 스스로 ✔/✘ 를 매깁니다.</div>
+    <div class="fdesc">라인별 생산 실적 25일치입니다. 표의 노란 열 5개를 채우고, 아래쪽 집계 39문제와 데이터베이스 함수 10문제를 풉니다. 답을 넣으면 옆 칸이 스스로 ✔/✘ 를 매깁니다.</div>
     <div class="sheets">시트 : 읽어보기 · 따라하기 · 생산일보 · DB함수 · 함수사전 · 정답·해설</div>
     <div class="cnt">문제 49개 + 표 채우기 125칸 · 함수사전 50여 개</div>
     <ul class="miss">

@@ -346,7 +346,7 @@
           if (name === 'AVERAGEIFS') return picked.reduce(function (a, b) { return a + b; }, 0) / picked.length;
           return name === 'MAXIFS' ? Math.max.apply(null, picked) : Math.min.apply(null, picked);
         }
-        case 'ROUND': { var nv = toNum(val(0)), d = toNum(val(1)); var e4 = firstErr(nv, d); if (e4) return e4; var f = Math.pow(10, d); return Math.round(nv * f) / f; }
+        case 'ROUND': { var nv = toNum(val(0)), d = toNum(val(1)); var e4 = firstErr(nv, d); if (e4) return e4; var f = Math.pow(10, d); var av = Number((Math.abs(nv) * f).toPrecision(15)); return (nv < 0 ? -1 : 1) * Math.round(av) / f; } // 엑셀은 .5 를 0에서 먼 쪽으로(-12.5 → -13)
         case 'ROUNDUP': { var nv1 = toNum(val(0)), d1 = toNum(val(1)); var f1 = Math.pow(10, d1); return (nv1 >= 0 ? Math.ceil(nv1 * f1) : Math.floor(nv1 * f1)) / f1; }
         case 'ROUNDDOWN': case 'TRUNC': { var nv2 = toNum(val(0)), d2 = A.length > 1 ? toNum(val(1)) : 0; var f2 = Math.pow(10, d2); return (nv2 >= 0 ? Math.floor(nv2 * f2) : Math.ceil(nv2 * f2)) / f2; }
         case 'INT': { var iv = toNum(val(0)); if (isErr(iv)) return iv; return Math.floor(iv); }
@@ -359,7 +359,7 @@
         case 'LEN': { return toStr(val(0)).length; }
         case 'UPPER': { return toStr(val(0)).toUpperCase(); }
         case 'LOWER': { return toStr(val(0)).toLowerCase(); }
-        case 'PROPER': { return toStr(val(0)).replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
+        case 'PROPER': { return toStr(val(0)).toLowerCase().replace(/(^|[^A-Za-z])([a-z])/g, function (m, a, c) { return a + c.toUpperCase(); }); } // 나머지 글자는 소문자로(LEE → Lee)
         case 'TRIM': { return toStr(val(0)).replace(/\s+/g, ' ').trim(); }
         case 'CONCATENATE': { return A.map(function (_, i) { return toStr(val(i)); }).join(''); }
         case 'VALUE': { var vv = toNum(val(0)); return vv; }

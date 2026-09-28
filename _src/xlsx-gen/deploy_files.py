@@ -22,7 +22,7 @@ G2 = [
     dict(src="2급_01_계산작업_생산일보_v2.xlsx", name="g2-01-func-production.xlsx",
          dl="2급_01_계산작업_생산일보_v2.xlsx",
          title="① 계산작업 — 생산일보 <span class='tag'>함수 49문제</span>",
-         desc="라인별 생산 실적 25일치입니다. 표의 노란 열 5개를 채우고, 아래쪽 집계 38문제와 "
+         desc="라인별 생산 실적 25일치입니다. 표의 노란 열 5개를 채우고, 아래쪽 집계 39문제와 "
               "데이터베이스 함수 10문제를 풉니다. 답을 넣으면 옆 칸이 스스로 ✔/✘ 를 매깁니다.",
          sheets="읽어보기 · 따라하기 · 생산일보 · DB함수 · 함수사전 · 정답·해설",
          count="문제 49개 + 표 채우기 125칸 · 함수사전 50여 개",
@@ -179,6 +179,18 @@ PAGE = """<!DOCTYPE html>
   .back{{display:inline-block;margin-bottom:14px;color:var(--tx2);text-decoration:none;font-size:14px;
     background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 14px}}
   .back:hover{{color:var(--tx);border-color:var(--pri)}}
+  .grid8{{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}}
+  @media(max-width:700px){{.grid8{{grid-template-columns:repeat(2,1fr)}}}}
+  a.fx{{display:block;text-decoration:none;background:var(--card2);border:1px solid var(--line);border-radius:11px;
+    padding:11px 12px;color:var(--tx);font-size:14px;font-weight:700;transition:.12s}}
+  a.fx:hover{{border-color:var(--ok);transform:translateY(-2px)}}
+  a.fx span{{display:block;font-size:11.5px;font-weight:500;color:var(--tx2);margin-top:3px}}
+  .mock{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}}
+  @media(max-width:700px){{.mock{{grid-template-columns:1fr}}}}
+  a.mk{{display:block;text-decoration:none;background:linear-gradient(135deg,#243a7a,#2c2a66);border:1px solid var(--line);
+    border-radius:13px;padding:14px 15px;color:#fff;font-weight:800;font-size:15px}}
+  a.mk span{{display:block;font-size:12px;font-weight:500;opacity:.85;margin-top:4px;line-height:1.5}}
+  a.mk:hover{{border-color:var(--gold)}}
   .footer{{text-align:center;color:var(--tx2);font-size:12px;margin-top:26px;line-height:1.8}}
 </style>
 </head>
@@ -188,9 +200,9 @@ PAGE = """<!DOCTYPE html>
 
   <div class="hero">
     <div class="badge">{badge}</div>
-    <h1>엑셀 예제파일 내려받기</h1>
+    <h1>엑셀 파일 내려받기</h1>
     <div class="lead">
-      웹에서 푸는 연습소와 달리, 이 파일들은 <b>진짜 엑셀에서 직접 해 보는</b> 자료입니다.<br>
+      웹에서 푸는 연습소와 달리, 이 파일들은 <b>진짜 엑셀에서 직접 해 보는</b> 자료입니다. <b>한 사람씩 내려받아 각자</b> 씁니다.<br>
       자료는 모두 <b>제조 현장</b>(생산일보 · 자재 입출고 · 설비 점검 · 공정 품질 · 출하 실적)을 소재로 만들었습니다.
     </div>
     <div class="how">
@@ -210,7 +222,8 @@ PAGE = """<!DOCTYPE html>
     </div>
   </div>
 
-  <h2>파일 목록</h2>
+{pre}
+  <h2 id="ex">📂 작업별 예제 파일 (제조 현장 자료)</h2>
 {cards}
 
   <div class="note">
@@ -245,7 +258,58 @@ CARD = """  <div class="fcard">
 """
 
 
-def build(repo_folder, badge, page_title, items):
+FX_CATS = [("logic", "논리", "IF · AND · OR · NOT · IFERROR"), ("stat", "통계", "평균 · 순위 · 개수 · 중앙값"),
+           ("cond", "조건부집계", "COUNTIF · SUMIF · AVERAGEIF"), ("math", "수학반올림", "ROUND 계열 · MOD · INT"),
+           ("text", "문자열", "LEFT · MID · 연결 · TRIM"), ("lookup", "찾기참조", "VLOOKUP · HLOOKUP · INDEX"),
+           ("db", "DB함수", "DSUM · DAVERAGE · DCOUNT"), ("date", "날짜", "YEAR · WEEKDAY · DAYS")]
+MOCK = [(1, "설비 보전", "고급 필터 · 부분합 · 목표값 찾기"), (2, "생산 라인", "조건부 서식 · 피벗 · 통합"),
+        (3, "자재 창고", "고급 필터(또는) · 시나리오 · 정렬")]
+
+
+def pre_2급(repo):
+    import json
+    probs = json.load(open(OUT / "web_problems.json", encoding="utf-8"))
+    names = {"logic": "논리(IF)", "stat": "통계", "cond": "조건부 집계", "math": "수학·반올림", "text": "문자열",
+             "lookup": "찾기·참조", "db": "데이터베이스", "date": "날짜"}
+    (repo / "files" / "fx").mkdir(parents=True, exist_ok=True)
+    (repo / "files" / "mock").mkdir(parents=True, exist_ok=True)
+    fx = []
+    for i, (key, short, fns) in enumerate(FX_CATS, 1):
+        src = OUT / "fx" / ("2급_함수연습_%02d_%s_v1.xlsx" % (i, short))
+        name = "g2-fx-%02d-%s.xlsx" % (i, key)
+        shutil.copyfile(src, repo / "files" / "fx" / name)
+        n = sum(1 for p in probs if p["cat"] == names[key])
+        fx.append('    <a class="fx" href="files/fx/%s" download="%s">⬇ %s<span>%d문제 · %s</span></a>'
+                  % (name, src.name, short, n, html.escape(fns)))
+    mk = []
+    for no, theme, what in MOCK:
+        src = OUT / "mock" / ("2급_실전모의고사_제%d회_v1.xlsx" % no)
+        name = "g2-mock-%02d.xlsx" % no
+        shutil.copyfile(src, repo / "files" / "mock" / name)
+        mk.append('    <a class="mk" href="files/mock/%s" download="%s">⬇ 제%d회 · %s<span>%s<br>40분 · 100점 · 자동 채점표</span></a>'
+                  % (name, src.name, no, theme, html.escape(what)))
+    return ('''  <h2 id="fx">📗 함수 연습 — 수업 범위별 (웹 연습소와 같은 문제)</h2>
+  <div class="fcard">
+    <div class="fdesc">웹 「함수 연습소」는 <b>한 문제씩</b>, 여기는 같은 문제를 <b>진짜 엑셀로 한꺼번에</b> 풉니다.
+      번호·표·칸 주소가 웹과 똑같습니다. 표에 여러 명이 있어서 <b>첫 칸에 수식 → 채우기 핸들로 끌어내리기</b>를 하면
+      사람마다 결과가 달라집니다. 칸마다 ✔/✘ 가 붙고 [채점표] 시트에 모입니다.</div>
+    <div class="grid8">
+%s
+    </div>
+  </div>
+  <h2 id="mock">📝 실전 모의고사 — 파일 하나가 시험 한 회</h2>
+  <div class="fcard">
+    <div class="fdesc">실제 시험과 같은 시트(기본작업-1 ~ 기타작업-2) · 같은 배점 · <b>40분 · 70점 합격</b>.
+      [문제지] 시트를 보고 풀고, 다 하면 [채점표] 에서 점수를 봅니다. 자료 입력·계산작업·고급 필터·목표값·통합·정렬은
+      <b>자동 채점</b>, 서식·부분합·피벗·매크로·차트는 [확인 방법]을 보고 <b>O / X</b> 를 고릅니다.</div>
+    <div class="mock">
+%s
+    </div>
+  </div>
+''' % ("\n".join(fx), "\n".join(mk)))
+
+
+def build(repo_folder, badge, page_title, items, pre=None):
     repo = ROOT / repo_folder
     fdir = repo / "files"
     fdir.mkdir(exist_ok=True)
@@ -260,11 +324,11 @@ def build(repo_folder, badge, page_title, items):
             sheets=html.escape(it["sheets"]), count=html.escape(it["count"]),
             name=it["name"], dl=it["dl"], size=kb,
             missions="\n".join("      <li>%s</li>" % html.escape(m) for m in it["missions"])))
-    page = PAGE.format(title=page_title, badge=badge, cards="".join(cards))
+    page = PAGE.format(title=page_title, badge=badge, cards="".join(cards), pre=pre(repo) if pre else "")
     (repo / "excel-files.html").write_text(page, encoding="utf-8")
     print("[%s] files/ %d개 · excel-files.html 다시 만듦" % (repo_folder, len(items)))
 
 
-build("컴활2급 실기 엑셀함수", "컴퓨터활용능력 2급", "컴활 2급 · 엑셀 예제파일", [THEORY] + G2)
+build("컴활2급 실기 엑셀함수", "컴퓨터활용능력 2급", "컴활 2급 · 엑셀 예제파일", [THEORY] + G2, pre=pre_2급)
 build("컴활1급 실기 엑셀함수", "컴퓨터활용능력 1급", "컴활 1급 · 엑셀 예제파일", [THEORY] + G1)
 print("완료")

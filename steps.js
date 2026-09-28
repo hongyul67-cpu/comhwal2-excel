@@ -109,6 +109,18 @@
     if (S.picked.length === p.steps.length) finishOrder();
   }
 
+  /* 손 순서를 익혔으면 진짜 엑셀에서 해 본다 — 작업별 예제 파일 */
+  var XL_WORK = {
+    '기본작업': ['files/g2-02-basic-inventory.xlsx', '2급_02_기본작업_자재입출고_v2.xlsx', '② 기본작업 — 자재 입출고'],
+    '분석작업': ['files/g2-03-analysis-maintenance.xlsx', '2급_03_분석작업_설비점검_v2.xlsx', '③ 분석작업 — 설비 점검'],
+    '기타작업': ['files/g2-04-chart-macro.xlsx', '2급_04_기타작업_차트매크로_v2.xlsx', '④ 기타작업 — 차트·매크로'],
+  };
+  function xlWorkHtml(p) {
+    var f = XL_WORK[p.cat]; if (!f) return '';
+    return '<div class="xlbox">📗 <b>진짜 엑셀에서 해 보기</b> — <a href="' + f[0] + '" download="' + f[1] + '">' + f[2] +
+      '</a> 파일의 [따라하기] 시트 · 시험처럼 한 번에 하려면 <a href="excel-files.html#mock">실전 모의고사</a></div>';
+  }
+
   function finishOrder() {
     var p = S.queue[S.idx];
     var hit = S.picked.filter(function (t, i) { return t === p.steps[i]; }).length;
@@ -121,6 +133,7 @@
       (p.hint ? '<div style="margin-top:6px;color:var(--tx2)">💡 ' + p.hint + '</div>' : '') +
       '</div>';
     S.phase = (p.opts && p.opts.length) ? 'opt' : 'end';
+    if (S.phase === 'end') $('stFb').innerHTML += xlWorkHtml(p);
     if (S.phase === 'opt') { S.oi = 0; setTimeout(drawOpt, 250); }
     drawTools();
   }
@@ -195,7 +208,7 @@
     nextOpt: function () {
       var p = S.queue[S.idx];
       S.oi++;
-      if (S.oi >= p.opts.length) { S.phase = 'end'; $('stFb').innerHTML = ''; drawTools(); }
+      if (S.oi >= p.opts.length) { S.phase = 'end'; $('stFb').innerHTML = xlWorkHtml(p); drawTools(); }
       else drawOpt();
     },
     next: function () {

@@ -17,12 +17,20 @@ VLOOKUP, HLOOKUP, INDEX, MATCH, CHOOSE /
 DSUM, DAVERAGE, DCOUNT, DCOUNTA, DMAX, DMIN /
 YEAR, MONTH, DAY, DAYS, DATE, WEEKDAY, HOUR, MINUTE, SECOND, TIME
 
+## 웹은 한 문제씩, 여러 문제는 엑셀로
+- **여러 명 표 + 채우기 핸들** — 문제 60개는 표에 5~8명이 있어 첫 칸에 수식을 넣고 ■ 를 끌어내린다(두 번 누르면 끝까지).
+  칸마다 채점하고, 틀린 칸에 실제로 들어간 수식(주소가 내려간 모양)을 보여 준다. `refshift.js` 가 엑셀처럼 주소를 옮긴다.
+  여러 명 데이터는 `data/fill.js` (경계값 일부러 포함 — 딱 160점 등).
+- **범위별 엑셀** `files/fx/` 8개 — 웹과 같은 번호·표·칸 주소. 시작 화면 범위 칩 아래·문제 풀이 뒤에 내려받기 링크.
+- **실전 모의고사** `files/mock/` 3회 — 웹 '실전 모드'를 대신한다. 만드는 법은 `_src/xlsx-gen/README.md`.
+
 ## 구조
 ```
 index.html      UI
 app.js          진행/채점 흐름
 engine.js       수식 파서 + 계산 엔진 (window.XLEngine)
-data/problems.js 연습문제
+data/problems.js 연습문제 (+ problems-plus.js, fill.js 순서로 로드)
+refshift.js     채우기 핸들 — 수식 주소 옮기기 (엑셀 굽는 스크립트도 같이 씀)
 ```
 
 ## 엔진 테스트

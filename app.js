@@ -9,22 +9,53 @@ function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { va
 
 /* fixed=true  → 수업용 '함께 풀기'. 문제 순서를 절대 섞지 않아 모든 PC에서 N번 문제가 같다.
    fixed=false → 학생 개인 연습. 매번 섞어서 출제. */
-var state = { cat: '전체', queue: [], idx: 0, correct: 0, answered: false, done: 0, startTime: 0, exam: null, fixed: false, uiMode: 'class' };
-
-/* ---------- 실전 모드 설정 ---------- */
-var EXAM_MODES = [
-  { key: 'real', nm: '실전 시험', n: 20, min: 40, ds: '20문항 · 40분 (실제 시험과 같은 시간)' },
-  { key: 'mini', nm: '미니 시험', n: 10, min: 20, ds: '10문항 · 20분 (짧게 점검)' },
-];
-var PASS_SCORE = 70;          // 실기 합격 기준 70점
-var examTimer = null;
-function pad2(n) { return (n < 10 ? '0' : '') + n; }
-function clearExamTimer() { if (examTimer) { clearInterval(examTimer); examTimer = null; } }
-function isExam() { return !!state.exam; }
+var state = { cat: '전체', queue: [], idx: 0, correct: 0, answered: false, done: 0, startTime: 0, fixed: false, uiMode: 'class' };
 
 /* ---------- 셀 주소 도우미 ---------- */
 function colLetter(c) { var s = ''; c++; while (c > 0) { var m = (c - 1) % 26; s = String.fromCharCode(65 + m) + s; c = Math.floor((c - 1) / 26); } return s; }
-function parseRef(ref) { var m = /^\$?([A-Za-z]{1,3})\$?([0-9]+)$/.exec(ref); var col = 0, L = m[1].toUpperCase(); for (var i = 0; i < L.length; i++) col = col * 26 + (L.charCodeAt(i) - 64); return { c: col - 1, r: parseInt(m[2], 10) - 1 }; }
+
+/* ---------- 범위별 엑셀 파일 ----------
+ * 웹은 한 문제씩, 여러 문제는 엑셀로. 범위(논리·통계…)마다 파일이 하나씩 있고
+ * 파일 안의 번호·표·칸 주소가 웹과 똑같다 (_src/xlsx-gen/gen_fx.py 가 이 데이터로 굽는다).
+ * 학생이 한 사람씩 내려받아 각자 쓴다. */
+var FX_FILES = [
+  ['논리(IF)', 'logic', '논리'], ['통계', 'stat', '통계'], ['조건부 집계', 'cond', '조건부집계'],
+  ['수학·반올림', 'math', '수학반올림'], ['문자열', 'text', '문자열'], ['찾기·참조', 'lookup', '찾기참조'],
+  ['데이터베이스', 'db', 'DB함수'], ['날짜', 'date', '날짜'],
+];
+/* 같은 유형을 더 풀 곳 — 예제파일 ① 생산일보 */
+var FX_MORE = {
+  '논리(IF)': '생산일보 시트 1~4번', '통계': '생산일보 시트 5~16번', '조건부 집계': '생산일보 시트 17~21번',
+  '수학·반올림': '생산일보 시트 22~25번', '문자열': '생산일보 시트 26~31번', '찾기·참조': '생산일보 시트 32~35번',
+  '데이터베이스': 'DB함수 시트 1~10번', '날짜': '생산일보 시트 36~39번',
+};
+function fxFile(cat) {
+  for (var i = 0; i < FX_FILES.length; i++) if (FX_FILES[i][0] === cat) {
+    var n = ('0' + (i + 1)).slice(-2);
+    return { href: 'files/fx/g2-fx-' + n + '-' + FX_FILES[i][1] + '.xlsx',
+             dl: '2급_함수연습_' + n + '_' + FX_FILES[i][2] + '_v1.xlsx', short: FX_FILES[i][2] };
+  }
+  return null;
+}
+function fxNo(p) {   // 엑셀 파일 안의 번호 = 그 범위 안에서 몇 번째 문제인가 (데이터 순서)
+  var same = PROBS.filter(function (x) { return x.cat === p.cat; });
+  return same.indexOf(p) + 1;
+}
+function xlRowHtml(cat) {
+  if (cat === '전체')
+    return '<a class="xldl" href="excel-files.html#fx">📗 범위별 엑셀 8개 보러 가기 <span>여러 문제는 엑셀로 · 한 사람씩 내려받기</span></a>';
+  var f = fxFile(cat); if (!f) return '';
+  var n = PROBS.filter(function (p) { return p.cat === cat; }).length;
+  return '<a class="xldl" href="' + f.href + '" download="' + f.dl + '">⬇ [' + escapeHtml(f.short) + '] 엑셀 받기 <span>' +
+    n + '문제 · 웹과 같은 번호·같은 칸</span></a>';
+}
+function xlBoxHtml(p) {
+  var f = fxFile(p.cat); if (!f) return '';
+  var no = ('0' + fxNo(p)).slice(-2);
+  return '<div class="xlbox">📗 <b>엑셀로도 풀어 보기</b> — <a href="' + f.href + '" download="' + f.dl + '">[' + escapeHtml(f.short) +
+    '] 파일</a>의 <b>' + no + '번 시트</b> (같은 표 · 같은 칸 주소)' +
+    (FX_MORE[p.cat] ? '<br>같은 유형 더 많이 — <a href="excel-files.html">예제파일 ① ' + FX_MORE[p.cat] + '</a>' : '') + '</div>';
+}
 
 /* ---------- 시작 화면 ---------- */
 function categories() {
@@ -32,10 +63,8 @@ function categories() {
   return ['전체'].concat(Object.keys(set));
 }
 function renderStart() {
-  clearExamTimer();
-  state.exam = null; state.rp = null; state.durationSec = 0;
+  state.rp = null; state.durationSec = 0;
   renderRank();
-  var tl = $('timerLabel'); if (tl) { tl.classList.add('hidden'); tl.classList.remove('warn'); }
   hide('practice'); hide('result'); show('start');
   ['catChipsC', 'catChips'].forEach(function (boxId) {
     var box = $(boxId); if (!box) return;
@@ -49,6 +78,7 @@ function renderStart() {
       box.appendChild(el);
     });
   });
+  ['xlRowC', 'xlRowP'].forEach(function (id) { var el = $(id); if (el) el.innerHTML = xlRowHtml(state.cat); });
   // 작업 순서 모드의 범위 칩 (계산작업과 유형이 달라 따로 그린다)
   var sBox = $('catChipsS');
   if (sBox && window.STEPS) {
@@ -61,21 +91,13 @@ function renderStart() {
       sBox.appendChild(el);
     });
   }
-  var ex = $('examOpts');
-  if (ex) {
-    ex.innerHTML = EXAM_MODES.map(function (m, i) {
-      var n = Math.min(m.n, PROBS.length);
-      return '<button class="exbtn" onclick="startExam(EXAM_MODES[' + i + '])">' +
-        '<b>' + m.nm + ' ▶</b><span>' + m.ds.replace(String(m.n) + '문항', n + '문항') + '</span></button>';
-    }).join('');
-  }
 }
 function pickMode(m) {
   state.uiMode = m;
-  [['mcClass', 'class'], ['mcPractice', 'practice'], ['mcExam', 'exam'], ['mcSteps', 'steps']].forEach(function (x) {
+  [['mcClass', 'class'], ['mcPractice', 'practice'], ['mcSteps', 'steps']].forEach(function (x) {
     var el = $(x[0]); if (el) el.classList.toggle('on', m === x[1]);
   });
-  [['classPanel', 'class'], ['practicePanel', 'practice'], ['examPanel', 'exam'], ['stepsPanel', 'steps']].forEach(function (x) {
+  [['classPanel', 'class'], ['practicePanel', 'practice'], ['stepsPanel', 'steps']].forEach(function (x) {
     if ($(x[0])) (m === x[1] ? show : hide)(x[0]);
   });
 }
@@ -84,10 +106,7 @@ function pickMode(m) {
 /* 수업용: 교재(데이터) 순서 그대로 — 섞지 않는다 */
 function startClass() { startPractice(true); }
 function startPractice(fixed) {
-  clearExamTimer();
-  state.exam = null;
   state.fixed = (fixed === true);
-  var tl = $('timerLabel'); if (tl) { tl.classList.add('hidden'); tl.classList.remove('warn'); }
   var pool = state.cat === '전체' ? PROBS : PROBS.filter(function (p) { return p.cat === state.cat; });
   state.queue = state.fixed ? pool.slice() : shuffle(pool);
   state.idx = 0; state.correct = 0; state.done = 0; state.marked = {}; state.startTime = Date.now();
@@ -95,46 +114,37 @@ function startPractice(fixed) {
   hide('start'); hide('result'); show('practice');
   renderProblem();
 }
-function quitPractice() {
-  if (isExam() && !confirm('시험을 그만둘까요?\n지금까지 입력한 답안은 채점되지 않아요.')) return;
-  renderStart();
-}
+function quitPractice() { renderStart(); }
 
 function renderProblem() {
   var p = state.queue[state.idx];
-  var total = state.queue.length, last = state.idx === total - 1;
+  var total = state.queue.length;
   state.answered = false;
+  state.tr = XLShift.range(p.target);          // 채울 칸 — 한 칸이면 r0 === r1
+  state.fillTo = state.tr.r0;                  // 지금 수식이 들어가 있는 마지막 행
+  state.sel = state.tr.r0;                     // 아래에 수식을 보여 줄 칸
   $('progLabel').textContent = (state.idx + 1) + ' / ' + total;
   $('pgFill').style.width = (state.idx / total * 100) + '%';
   $('catTag').textContent = p.cat;
   $('pTitle').textContent = p.title;
-  $('pPrompt').innerHTML = p.prompt;
+  $('pPrompt').innerHTML = p.prompt + (isMulti() ?
+    '<div class="fillnote">⬇ <b>' + firstAddr() + '</b> 에 수식을 넣고 <b>채우기 핸들</b>(노란 칸 오른쪽 아래 ■)을 <b>' +
+    lastAddr() + '</b> 까지 끌어내리세요. 사람마다 결과가 다르게 나와야 합니다.</div>' : '');
   $('fb').innerHTML = '';
   renderSheet(p);
 
   var fx = $('fx');
   fx.disabled = false;
-  if (isExam()) {
-    // 실전: 정답·점수 숨김, 입력만 저장하고 이동
-    $('scoreLabel').classList.add('hidden');
-    fx.value = state.exam.raw[state.idx] || '';
-    $('toolBtns').innerHTML =
-      '<button class="btn ghost" onclick="examNav(-1)"' + (state.idx === 0 ? ' disabled' : '') + '>← 이전</button>' +
-      '<button class="btn green" onclick="examNav(1)">' + (last ? '제출하기 ✓' : '다음 →') + '</button>' +
-      '<div class="spacer"></div>' +
-      '<div class="chip2" style="align-self:center">응답 ' + examAnsweredCount() + ' / ' + total + '</div>';
-  } else {
-    $('scoreLabel').classList.remove('hidden');
-    $('scoreLabel').textContent = state.correct + '점';
-    fx.value = '';
-    $('toolBtns').innerHTML =
-      (state.fixed ? '<button class="btn ghost" onclick="prevProblem()"' + (state.idx === 0 ? ' disabled' : '') + '>← 이전</button>' : '') +
-      '<button class="btn green" onclick="checkAnswer()">확인</button>' +
-      '<button class="btn sec" onclick="showHint()">💡 힌트</button>' +
-      '<button class="btn ghost" onclick="showModel()">모범답안</button>' +
-      '<button class="btn ghost" onclick="skipProblem()">' + (state.fixed ? '다음 →' : '건너뛰기 →') + '</button>' +
-      (state.fixed ? jumpSelectHtml() : '');
-  }
+  fx.value = '';
+  $('scoreLabel').textContent = state.correct + '점';
+  $('toolBtns').innerHTML =
+    (state.fixed ? '<button class="btn ghost" onclick="prevProblem()"' + (state.idx === 0 ? ' disabled' : '') + '>← 이전</button>' : '') +
+    '<button class="btn green" onclick="checkAnswer()">확인</button>' +
+    (isMulti() ? '<button class="btn sec" id="fillAllBtn" onclick="fillAll()">⬇ 끝까지 채우기</button>' : '') +
+    '<button class="btn sec" onclick="showHint()">💡 힌트</button>' +
+    '<button class="btn ghost" onclick="showModel()">모범답안</button>' +
+    '<button class="btn ghost" onclick="skipProblem()">' + (state.fixed ? '다음 →' : '건너뛰기 →') + '</button>' +
+    (state.fixed ? jumpSelectHtml() : '');
   updateLive();
   setTimeout(function () { fx.focus(); }, 40);
 }
@@ -157,10 +167,15 @@ function prevProblem() {
   if (state.idx > 0) { state.idx--; renderProblem(); }
 }
 
+function isMulti() { return !!state.tr && state.tr.r1 > state.tr.r0; }
+function addrOf(r) { return state.tr.col + (r + 1); }
+function firstAddr() { return addrOf(state.tr.r0); }
+function lastAddr() { return addrOf(state.tr.r1); }
+function inTarget(r, c) { return !!state.tr && c === state.tr.c && r >= state.tr.r0 && r <= state.tr.r1; }
+
 function renderSheet(p) {
   var g = p.grid;
   var cols = 0; g.forEach(function (row) { cols = Math.max(cols, row.length); });
-  var tgt = parseRef(p.target);
   var html = '<tr><th></th>';
   for (var c = 0; c < cols; c++) html += '<th>' + colLetter(c) + '</th>';
   html += '</tr>';
@@ -168,20 +183,24 @@ function renderSheet(p) {
     html += '<tr><td class="rowh">' + (r + 1) + '</td>';
     for (var c2 = 0; c2 < cols; c2++) {
       var v = g[r][c2];
-      var isT = (r === tgt.r && c2 === tgt.c);
-      var isNum = (typeof v === 'number');
-      var cls = isT ? 'tcell' : (isNum ? 'num' : '');
-      var disp = isT ? '?' : (v === null || v === undefined ? '' : v);
-      html += '<td class="' + cls + '"' + (isT ? ' id="tcell"' : '') + '>' + disp + '</td>';
+      if (inTarget(r, c2)) {
+        html += '<td class="tcell" id="tc' + r + '" onclick="selectCell(' + r + ')"></td>';
+        continue;
+      }
+      var disp = (v === null || v === undefined) ? '' : escapeHtml(v);
+      html += '<td class="' + (typeof v === 'number' ? 'num' : '') + '">' + disp + '</td>';
     }
     html += '</tr>';
   }
   $('sheet').innerHTML = html;
+  var cf = $('cellfx');
+  if (cf) cf.innerHTML = '';
 }
 
 /* ---------- 노란 칸 실시간 결과 ----------
  * 학생이 입력줄에 치는 동안 그 수식을 실제로 계산해 노란 셀에 그대로 보여준다.
- * (아래 정답만 뜨면 "진짜 작동하는지" 알 수 없다는 피드백 → 엑셀처럼 셀에 값이 뜨게)
+ * 여러 칸짜리 문제는 끌어내린 칸까지 «그 칸으로 옮겨진 수식»으로 각각 계산한다
+ * — 엑셀과 똑같이 $ 없는 주소는 한 줄씩 내려간다.
  * 괄호·따옴표가 아직 안 닫혔으면 오류 대신 '…'으로 조용히 넘어간다. */
 function looksIncomplete(f) {
   var depth = 0, q = false;
@@ -198,38 +217,117 @@ function looksIncomplete(f) {
   if (/[A-Za-z_.]$/.test(f) && !/\$?[A-Za-z]{1,3}\$?[0-9]+$/.test(f)) return true;
   return false;
 }
-function setCell(cls, html) {
-  var td = $('tcell');
+function setCellAt(r, cls, html) {
+  var td = $('tc' + r);
   if (!td) return;
-  td.className = 'tcell' + (cls ? ' ' + cls : '');
+  td.className = 'tcell' + (cls ? ' ' + cls : '') + (r === state.sel && isMulti() && r <= state.fillTo ? ' sel' : '');
   td.innerHTML = html;
 }
-/* 계산이 안 되면 값 대신 '오류'라고 분명히 보여 준다 — 숫자가 왜 안 나오는지 바로 알게 */
-function cellError(msg) {
-  setCell('err', '<div class="cv">⚠ 오류</div>' +
-    (msg ? '<div class="cv2 errcode">' + escapeHtml(msg) + '</div>' : ''));
+function setCell(cls, html) { setCellAt(state.tr.r0, cls, html); }
+function errHtml(msg) {
+  return '<div class="cv">⚠ 오류</div>' + (msg ? '<div class="cv2 errcode">' + escapeHtml(msg) + '</div>' : '');
 }
+/* 계산이 안 되면 값 대신 '오류'라고 분명히 보여 준다 — 숫자가 왜 안 나오는지 바로 알게 */
+function cellError(msg) { setCell('err', errHtml(msg)); }
+function formulaAt(raw, r) { return XLShift.shift(raw, r - state.tr.r0); }
 function updateLive() {
   if (state.answered) return;                 // 채점 뒤에는 결과를 고정해 둔다
   var p = state.queue[state.idx];
-  if (!p || !$('tcell')) return;
+  if (!p || !state.tr) return;
   var raw = ($('fx').value || '').trim();
-  if (!raw) { setCell('', '?'); return; }
-  if (raw.charAt(0) !== '=') { setCell('lit', escapeHtml(raw)); return; }
-  if (raw.length === 1) { setCell('typing', '…'); return; }
-  var r = XLEngine.evaluate(raw, p.grid);
-  if ('error' in r) {
-    if (looksIncomplete(raw)) setCell('typing', '…');
-    else cellError(r.error);
-    return;
+  var r0 = state.tr.r0, r1 = state.tr.r1;
+  if (!raw) { state.fillTo = r0; state.sel = r0; }   // 수식을 지우면 끌어내린 것도 없어진다
+  for (var r = r0; r <= r1; r++) {
+    if (r > state.fillTo) { setCellAt(r, 'empty', ''); continue; }
+    if (!raw) { setCellAt(r, '', '?'); continue; }
+    if (raw.charAt(0) !== '=') { setCellAt(r, 'lit', escapeHtml(raw)); continue; }
+    if (raw.length === 1) { setCellAt(r, 'typing', '…'); continue; }
+    var res = XLEngine.evaluate(formulaAt(raw, r), p.grid);
+    if ('error' in res) {
+      if (looksIncomplete(raw)) setCellAt(r, 'typing', '…');
+      else setCellAt(r, 'err', errHtml(res.error));
+      continue;
+    }
+    setCellAt(r, 'live', escapeHtml(fmt(res.value)));
   }
-  setCell('live', escapeHtml(fmt(r.value)));
+  paintHandle();
+  showCellFx();
 }
-/* 채점 결과를 셀에 남긴다 — 틀리면 내 값 아래에 정답 값도 같이 */
-function paintGraded(myVal, modelVal, ok) {
-  var my = '<div class="cv">' + escapeHtml(fmt(myVal)) + '</div>';
-  if (ok) { setCell('good', my); return; }
-  setCell('bad', my + '<div class="cv2">정답 ' + escapeHtml(fmt(modelVal)) + '</div>');
+
+/* ---------- 채우기 핸들 ----------
+ * 수식이 든 마지막 칸 오른쪽 아래에 작은 네모(■)가 붙는다.
+ * 끌어서 아래 칸에 놓으면 그 칸까지 채워지고, 두 번 누르면 끝까지 채워진다(엑셀과 같다). */
+function paintHandle() {
+  var old = document.querySelector('#sheet .fh');
+  if (old) old.parentNode.removeChild(old);
+  var raw = ($('fx').value || '').trim();
+  if (!isMulti() || state.answered || raw.charAt(0) !== '=' || raw.length < 2) return;
+  var td = $('tc' + state.fillTo);
+  if (!td) return;
+  var h = document.createElement('i');
+  h.className = 'fh';
+  h.title = '끌어내려 채우기 (두 번 누르면 끝까지)';
+  h.addEventListener('pointerdown', startFillDrag);
+  h.addEventListener('click', function (e) { e.stopPropagation(); });
+  h.addEventListener('dblclick', function (e) { e.stopPropagation(); fillAll(); });
+  td.appendChild(h);
+}
+function rowFromPoint(x, y) {
+  var el = document.elementFromPoint(x, y);
+  var tr = el && el.closest ? el.closest('#sheet tr') : null;
+  if (!tr) return null;
+  return tr.rowIndex - 1;                      // 머리글 줄(A B C…) 한 줄을 뺀다
+}
+function previewFill(to) {
+  for (var r = state.tr.r0; r <= state.tr.r1; r++) {
+    var td = $('tc' + r); if (!td) continue;
+    td.classList.toggle('fillprev', r > state.fillTo && r <= to);
+  }
+}
+function startFillDrag(e) {
+  e.preventDefault(); e.stopPropagation();
+  var to = state.fillTo;
+  var h = e.currentTarget;
+  try { h.setPointerCapture(e.pointerId); } catch (x) {}
+  function move(ev) {
+    var r = rowFromPoint(ev.clientX, ev.clientY);
+    if (r === null) return;
+    to = Math.max(state.tr.r0, Math.min(state.tr.r1, r));
+    previewFill(to);
+  }
+  function up() {
+    h.removeEventListener('pointermove', move);
+    h.removeEventListener('pointerup', up);
+    h.removeEventListener('pointercancel', up);
+    previewFill(-1);
+    if (to !== state.fillTo) { state.fillTo = to; state.sel = to; updateLive(); }
+  }
+  h.addEventListener('pointermove', move);
+  h.addEventListener('pointerup', up);
+  h.addEventListener('pointercancel', up);
+}
+function fillAll() {
+  if (state.answered || !isMulti()) return;
+  var raw = ($('fx').value || '').trim();
+  if (raw.charAt(0) !== '=' || raw.length < 2) { flash('먼저 <b>' + firstAddr() + '</b> 에 들어갈 수식을 입력하세요.', 'no'); return; }
+  state.fillTo = state.tr.r1;
+  updateLive();
+}
+/* 칸을 누르면 그 칸에 실제로 들어간 수식을 보여 준다 — $ 가 왜 필요한지 여기서 보인다 */
+function selectCell(r) {
+  if (!isMulti() || r > state.fillTo) return;
+  state.sel = r;
+  for (var i = state.tr.r0; i <= state.tr.r1; i++) { var td = $('tc' + i); if (td) td.classList.toggle('sel', i === r); }
+  showCellFx();
+}
+function showCellFx() {
+  var cf = $('cellfx'); if (!cf) return;
+  var raw = ($('fx').value || '').trim();
+  if (!isMulti() || raw.charAt(0) !== '=' || raw.length < 2) { cf.innerHTML = ''; return; }
+  var r = Math.min(state.sel, state.fillTo);
+  cf.innerHTML = '<span class="cfaddr">' + addrOf(r) + '</span> 칸의 수식 <code>' + escapeHtml(formulaAt(raw, r)) + '</code>' +
+    (state.fillTo < state.tr.r1 ? ' <span class="cfhint">· 채운 칸 ' + firstAddr() + '~' + addrOf(state.fillTo) + '</span>'
+                                : ' <span class="cfhint">· 다른 칸을 누르면 그 칸의 수식이 보여요</span>');
 }
 
 /* ---------- 채점 ---------- */
@@ -270,27 +368,72 @@ function checkAnswer() {
   if (!raw) { flash('수식을 입력하세요. (예: =IF(...))', 'no'); return; }
   var shape = shapeHint(raw, p.answer);
   if (shape) { flash('<b>✋ 잠깐요</b> · ' + shape, 'no'); return; }
-  var stu = XLEngine.evaluate(raw, p.grid);
-  var model = XLEngine.evaluate(p.answer, p.grid);
-  if ('error' in stu) {
-    cellError(stu.error);
-    flash('<b>❌ 수식 오류:</b> ' + stu.error + '<br>괄호·따옴표·쉼표를 확인해 보세요. (노란 칸에도 오류가 그대로 나옵니다)', 'no');
+  var r0 = state.tr.r0, r1 = state.tr.r1;
+  var first = XLEngine.evaluate(raw, p.grid);
+  if ('error' in first && (!isMulti() || looksIncomplete(raw))) {
+    cellError(first.error);
+    flash('<b>❌ 수식 오류:</b> ' + first.error + '<br>괄호·따옴표·쉼표를 확인해 보세요. (노란 칸에도 오류가 그대로 나옵니다)', 'no');
     return;
   }
-  var ok = !('error' in model) && valEqual(stu.value, model.value);
+  if (isMulti() && state.fillTo < r1) {
+    flash('<b>✋ 아직 다 안 채웠어요</b> · ' + addrOf(state.fillTo + 1) + '~' + lastAddr() + ' 칸이 비어 있습니다.<br>' +
+      '노란 칸 오른쪽 아래 <b>■ 채우기 핸들</b>을 ' + lastAddr() + ' 까지 끌어내리거나, [⬇ 끝까지 채우기]를 누르세요.', 'no');
+    return;
+  }
+  // 칸마다 — 그 칸으로 옮겨진 내 수식 vs 그 칸으로 옮겨진 모범답안
+  var rows = [], okN = 0;
+  for (var r = r0; r <= r1; r++) {
+    var mine = XLEngine.evaluate(formulaAt(raw, r), p.grid);
+    var model = XLEngine.evaluate(XLShift.shift(p.answer, r - r0), p.grid);
+    var mv = ('error' in model) ? '-' : model.value;
+    var ok = !('error' in mine) && !('error' in model) && valEqual(mine.value, model.value);
+    if (ok) okN++;
+    rows.push({ r: r, ok: ok, mine: mine, mv: mv });
+  }
+  var allOk = okN === rows.length;
   state.answered = true;
   state.done++;
-  var fx = $('fx'); fx.disabled = true;
-  var modelVal = ('error' in model) ? '-' : model.value;
-  paintGraded(stu.value, modelVal, ok);
-  if (ok) {
+  $('fx').disabled = true;
+  rows.forEach(function (x) {
+    var my = ('error' in x.mine) ? errHtml(x.mine.error) : '<div class="cv">' + escapeHtml(fmt(x.mine.value)) + '</div>';
+    setCellAt(x.r, x.ok ? 'good' : 'bad', my + (x.ok ? '' : '<div class="cv2">정답 ' + escapeHtml(fmt(x.mv)) + '</div>'));
+  });
+  paintHandle();
+  var myFirst = ('error' in rows[0].mine) ? '오류' : fmt(rows[0].mine.value);
+  if (allOk) {
     /* 수업용은 앞뒤로 오갈 수 있어 같은 문제를 두 번 맞혀도 점수가 중복되지 않게 한다 */
     if (!state.marked[state.idx]) { state.marked[state.idx] = 1; state.correct++; }
     $('scoreLabel').textContent = state.correct + '점';
-    finish('<b>✅ 정답!</b> 노란 칸에 나온 계산 결과: <b>' + fmt(stu.value) + '</b>', 'ok', p);
-  } else {
-    finish('<b>❌ 오답</b> · 내 결과: <b>' + fmt(stu.value) + '</b> (정답 결과: <b>' + fmt(modelVal) + '</b>)', 'no', p);
+    finish(isMulti() ? '<b>✅ 정답!</b> ' + rows.length + '칸 모두 맞았어요. 사람마다 다른 결과가 제대로 나왔습니다.'
+                     : '<b>✅ 정답!</b> 노란 칸에 나온 계산 결과: <b>' + escapeHtml(myFirst) + '</b>', 'ok', p);
+    return;
   }
+  if (!isMulti()) {
+    finish('<b>❌ 오답</b> · 내 결과: <b>' + escapeHtml(myFirst) + '</b> (정답 결과: <b>' + escapeHtml(fmt(rows[0].mv)) + '</b>)', 'no', p);
+    return;
+  }
+  // 여러 칸 — 어느 칸이 틀렸는지, 그 칸에 실제로 들어간 수식까지 보여 준다
+  var wrong = rows.filter(function (x) { return !x.ok; });
+  var w = wrong[0];
+  var msg = '<b>❌ ' + rows.length + '칸 중 ' + okN + '칸 맞음</b> · 틀린 칸: ' +
+    wrong.map(function (x) { return addrOf(x.r); }).join(', ') +
+    '<div style="margin-top:8px">' + addrOf(w.r) + ' 칸에 실제로 들어간 수식 <span class="ansline">' + escapeHtml(formulaAt(raw, w.r)) + '</span>' +
+    ' → ' + (('error' in w.mine) ? '오류' : '<b>' + escapeHtml(fmt(w.mine.value)) + '</b>') +
+    ' (정답 <b>' + escapeHtml(fmt(w.mv)) + '</b>)</div>';
+  var tip = fillTip(raw, p.answer, rows);
+  if (tip) msg += '<div style="margin-top:6px">💡 ' + tip + '</div>';
+  state.sel = w.r; showCellFx();
+  finish(msg, 'no', p);
+}
+/* 틀린 까닭 짐작 — 가장 흔한 두 가지 */
+function fillTip(raw, answer, rows) {
+  if (rows[0].ok && answer.indexOf('$') >= 0 && raw.indexOf('$') < 0)
+    return '첫 칸은 맞았는데 아래 칸이 틀렸다면 — <b>끌어내리면서 범위(또는 기준 칸)도 같이 내려간 것</b>입니다. ' +
+           '움직이면 안 되는 주소에 <b>F4</b> 로 <b>$</b> 를 붙이세요.';
+  if (/>=|<=/.test(answer) && !/>=|<=/.test(raw) && /[<>]/.test(raw))
+    return '딱 기준값인 사람(경계)이 틀렸다면 <b>&gt;</b>(초과)와 <b>&gt;=</b>(이상)을 확인하세요.';
+  if (!rows[0].ok) return '첫 칸부터 틀렸어요. 문제의 조건을 다시 읽어 보세요.';
+  return '맞은 칸과 틀린 칸의 자료를 비교해 보세요 — 어떤 경우를 놓쳤는지 보입니다.';
 }
 /* 셀에 보여 줄 값 — 엑셀처럼 깔끔한 숫자로 만든다.
    자바스크립트 계산은 0.1*0.2 가 0.020000000000000004 처럼 나오는데,
@@ -316,6 +459,7 @@ function finish(msg, cls, p) {
   $('fb').innerHTML = '<div class="feedback ' + cls + '">' + msg +
     '<div style="margin-top:8px">모범답안 <span class="ansline">' + p.answer + '</span></div>' +
     (p.hint ? '<div style="margin-top:6px;color:var(--tx2)">💡 ' + p.hint + '</div>' : '') +
+    xlBoxHtml(p) +
     '<div class="row" style="margin-top:12px"><button class="btn" onclick="nextProblem()">' +
     (last ? '결과 보기 →' : '다음 문제 →') + '</button></div></div>';
 }
@@ -347,9 +491,11 @@ function showModel() {
   var m = XLEngine.evaluate(p.answer, p.grid);
   var mv = ('error' in m) ? '-' : fmt(m.value);
   $('fb').innerHTML = '<div class="feedback ok">모범답안 <span class="ansline">' + p.answer + '</span>' +
-    '<div style="margin-top:6px">이 수식을 넣으면 노란 칸에 <b>' + escapeHtml(mv) + '</b> 이(가) 나옵니다.</div>' +
+    '<div style="margin-top:6px">이 수식을 ' + (isMulti() ? '<b>' + firstAddr() + '</b> 에 넣으면' : '넣으면 노란 칸에') + ' <b>' + escapeHtml(mv) + '</b> 이(가) 나옵니다.' +
+    (isMulti() ? ' 그다음 ' + lastAddr() + ' 까지 끌어내립니다.' : '') + '</div>' +
     (p.hint ? '<div style="margin-top:6px;color:var(--tx2)">💡 ' + p.hint + '</div>' : '') +
-    '<div style="margin-top:6px;color:var(--tx2);font-size:13px">입력줄에 직접 따라 쳐 보고 [확인]을 눌러 보세요.</div></div>';
+    '<div style="margin-top:6px;color:var(--tx2);font-size:13px">입력줄에 직접 따라 쳐 보고' +
+    (isMulti() ? ' 끝까지 끌어내린 뒤' : '') + ' [확인]을 눌러 보세요.</div>' + xlBoxHtml(p) + '</div>';
 }
 
 /* ---------- 결과 ---------- */
@@ -375,128 +521,6 @@ function showResult() {
     '</div>';
 }
 
-/* ============ 실전 모드 ============ */
-function startExam(mode) {
-  var n = Math.min(mode.n, PROBS.length);
-  if (!n) { alert('문제를 준비하지 못했어요.'); return; }
-  state.queue = shuffle(PROBS).slice(0, n);
-  state.fixed = false;
-  state.idx = 0; state.correct = 0; state.done = 0; state.marked = {}; state.startTime = Date.now();
-  state.exam = { mode: mode, raw: new Array(n).fill(''), deadline: Date.now() + mode.min * 60000, timeUp: false };
-  hide('start'); hide('result'); show('practice');
-  var tl = $('timerLabel'); if (tl) tl.classList.remove('hidden');
-  examTick();
-  examTimer = setInterval(examTick, 1000);
-  renderProblem();
-}
-function examTick() {
-  if (!isExam()) { clearExamTimer(); return; }
-  var left = Math.max(0, Math.round((state.exam.deadline - Date.now()) / 1000));
-  var tl = $('timerLabel');
-  if (tl) {
-    tl.textContent = '⏱ ' + pad2(Math.floor(left / 60)) + ':' + pad2(left % 60);
-    tl.classList.toggle('warn', left <= 300);   // 5분 이하 경고
-  }
-  if (left <= 0) { clearExamTimer(); saveExamInput(); finishExamXL(true); }
-}
-function examAnsweredCount() {
-  if (!isExam()) return 0;
-  return state.exam.raw.filter(function (s) { return s && s.trim(); }).length;
-}
-function saveExamInput() {
-  if (!isExam()) return;
-  var fx = $('fx');
-  if (fx) state.exam.raw[state.idx] = fx.value.trim();
-}
-function examNav(d) {
-  saveExamInput();
-  if (d > 0 && state.idx === state.queue.length - 1) { confirmSubmitExam(); return; }
-  state.idx = Math.min(state.queue.length - 1, Math.max(0, state.idx + d));
-  renderProblem();
-}
-function confirmSubmitExam() {
-  var un = state.queue.length - examAnsweredCount();
-  var msg = un > 0 ? ('아직 입력하지 않은 문제가 ' + un + '개 있어요.\n제출할까요?') : '답안을 제출할까요?';
-  if (confirm(msg)) finishExamXL(false);
-}
-// 채점: 학생 수식을 실제로 계산해 모범답안 결과와 비교
-function gradeOne(p, raw) {
-  var model = XLEngine.evaluate(p.answer, p.grid);
-  var modelVal = ('error' in model) ? null : model.value;
-  if (!raw || !raw.trim()) return { ok: false, my: '(미응답)', model: modelVal === null ? '-' : fmt(modelVal) };
-  if (!hasCellRef(raw)) return { ok: false, my: raw + ' (셀 참조 없음)', model: modelVal === null ? '-' : fmt(modelVal) };
-  var stu = XLEngine.evaluate(raw, p.grid);
-  if ('error' in stu) return { ok: false, my: '수식 오류 ' + stu.error, model: modelVal === null ? '-' : fmt(modelVal) };
-  var ok = (modelVal !== null) && valEqual(stu.value, modelVal);
-  return { ok: ok, my: fmt(stu.value), model: modelVal === null ? '-' : fmt(modelVal) };
-}
-function finishExamXL(timeUp) {
-  clearExamTimer();
-  var tl = $('timerLabel'); if (tl) { tl.classList.add('hidden'); tl.classList.remove('warn'); }
-  state.exam.timeUp = !!timeUp;
-  state.exam.marks = state.queue.map(function (p, i) { return gradeOne(p, state.exam.raw[i]); });
-  state.correct = state.exam.marks.filter(function (m) { return m.ok; }).length;
-  state.durationSec = Math.round((Date.now() - state.startTime) / 1000);
-  // 실전은 RP 2배 + 합격(70점) 보너스 30
-  var n = state.queue.length, passed = Math.round(state.correct / n * 100) >= PASS_SCORE;
-  state.rp = hasRank() ? CH2Rank.award(state.correct, n - state.correct, 2, passed ? 30 : 0) : null;
-  showExamResult();
-}
-function showExamResult() {
-  hide('practice'); show('result');
-  var n = state.queue.length, c = state.correct;
-  var score = Math.round(c / n * 100);
-  var pass = score >= PASS_SCORE;
-  var e = state.exam;
-  $('result').innerHTML =
-    '<div class="result pcard">' +
-      (e.timeUp ? '<div style="color:var(--no);font-weight:700;font-size:13px">⏰ 시간 종료로 자동 제출됐어요</div>' : '') +
-      '<div style="color:var(--tx2);font-size:13px;font-weight:700">' + e.mode.nm + '</div>' +
-      '<div class="big">' + (pass ? '🎉' : '💪') + '</div>' +
-      '<div class="verdict ' + (pass ? 'pass' : 'fail') + '">' + (pass ? '합격' : '불합격') + '</div>' +
-      '<div class="score" style="font-size:30px">' + score + '점</div>' +
-      '<div style="color:var(--tx2);margin-top:4px">정답 ' + c + ' / ' + n +
-        ' · 소요 ' + Math.floor(state.durationSec / 60) + '분 ' + (state.durationSec % 60) + '초</div>' +
-      '<div style="color:var(--tx2);font-size:13px;margin-top:6px">실기는 <b style="color:var(--tx)">70점 이상</b>이면 합격이에요.</div>' +
-      rankBanner(state.rp) +
-      rankRegister() +
-      submitBtnHtml() +
-      '<div class="rbtns">' +
-        '<button class="btn sec" onclick="showExamReview()">📖 풀이 보기 (' + (n - c) + '개 오답)</button>' +
-        '<button class="btn sec" onclick="renderStart()">처음으로</button>' +
-        '<button class="btn" onclick="startExam(state.exam.mode)">다시 도전</button>' +
-      '</div>' +
-    '</div>';
-}
-// 풀이과정: 제출 후에만 — 내 수식/결과 vs 모범답안/결과 + 힌트
-function showExamReview() {
-  hide('practice'); show('result');
-  var items = state.queue.map(function (p, i) {
-    var m = state.exam.marks[i], raw = state.exam.raw[i];
-    var mark = m.ok ? '<span style="color:var(--ok)">✅ 정답</span>'
-      : (!raw ? '<span style="color:var(--tx2)">⬜ 미응답</span>' : '<span style="color:var(--no)">❌ 오답</span>');
-    return '<div class="rvitem">' +
-      '<div class="rvmeta">' + (i + 1) + '. ' + p.cat + ' · ' + mark + '</div>' +
-      '<div class="rvtitle">' + p.title + '</div>' +
-      '<div class="rvprompt">' + p.prompt + '</div>' +
-      '<div class="fxlab">내가 쓴 수식 · 결과 ' + m.my + '</div>' +
-      '<div class="fxline mine">' + (raw ? escapeHtml(raw) : '(입력하지 않음)') + '</div>' +
-      '<div class="fxlab">모범답안 · 결과 ' + m.model + '</div>' +
-      '<div class="fxline model">' + escapeHtml(p.answer) + '</div>' +
-      (p.hint ? '<div class="rvprompt" style="margin:10px 0 0">💡 ' + p.hint + '</div>' : '') +
-    '</div>';
-  }).join('');
-  $('result').innerHTML =
-    '<div>' +
-      '<div class="row" style="justify-content:space-between;margin-bottom:10px">' +
-        '<div style="font-weight:800;font-size:16px">📖 풀이 보기 · ' + state.queue.length + '문항</div>' +
-        '<button class="btn sec" onclick="showExamResult()">← 결과로</button></div>' +
-      items +
-      '<div class="rbtns"><button class="btn sec" onclick="renderStart()">처음으로</button>' +
-      '<button class="btn" onclick="startExam(state.exam.mode)">다시 도전</button></div>' +
-    '</div>';
-  window.scrollTo(0, 0);
-}
 function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -530,19 +554,6 @@ function submitResult() {
   }
   var n = state.queue.length, c = state.correct, score = Math.round(c / n * 100);
   var tier = hasRank() ? (' · ' + CH2Rank.tierOf(CH2Rank.rp()).name + '(' + CH2Rank.rp() + 'RP)') : '';
-  if (isExam()) {
-    // 시트 탭은 하나로 — 실전 유형은 mode 로 (규약 §1 ①)
-    ResultCollector.config.tool = '컴활 2급 실기-스프레드시트';
-    ResultCollector.open({
-      score: score, correct: c, total: n, durationSec: state.durationSec,
-      labels: { score: '점수', correct: '맞힘', total: '문항수' },
-      mode: '스프레드시트 실기 — 실전 ' + state.exam.mode.nm +
-            (score >= PASS_SCORE ? ' (합격)' : ' (불합격)'),
-      tier: hasRank() ? CH2Rank.tierOf(CH2Rank.rp()).name : undefined,
-      extra: ['실전 형식 문제 해결'],
-    });
-    return;
-  }
   ResultCollector.config.tool = '컴활 2급 실기-스프레드시트';
   ResultCollector.open({
     score: score,
@@ -568,7 +579,7 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Enter' && !$('practice').classList.contains('hidden')) {
     if (document.activeElement === $('fx')) {
       e.preventDefault();
-      if (isExam()) examNav(1); else checkAnswer();
+      checkAnswer();
     }
   }
 });

@@ -7,8 +7,17 @@
 python build.py out          # 8개 전부 (out\ 에 _v2 이름으로)
 python build.py out 2        # 2급만  /  python build.py out 1  → 1급만
 python verify.py out         # ★ 검산 — 숨은 정답을 학생 칸에 넣어 채점이 전부 '맞음' 인지 확인
+node export_web.js           # 웹 연습소 문제(data/*.js)를 out/web_problems.json 으로
+python gen_fx.py out         # 수업 범위별 함수 연습 8개 (out/fx) — 웹과 같은 번호·표·칸 주소
+python verify_fx.py out      # ★ 검산 — 모범답안이 전부 ✔, 엑셀 값 = 웹 엔진 값, $ 빼면 ✘
+python gen_mock.py out       # 실전 모의고사 3회 (out/mock)
+python verify_mock.py out    # ★ 검산 — 입력·고급필터·계산·목표값/통합/정렬을 실제로 해서 100점이 되는지
 python deploy_files.py       # out/ → 두 저장소의 files/ 복사 + excel-files.html 다시 생성
 ```
+
+**웹 문제를 고치면** `node export_web.js → gen_fx.py → verify_fx.py → deploy_files.py` 를 다시 돌립니다
+(엑셀 범위별 파일이 웹 데이터로 만들어지므로). 웹 앱은 `app.js` 의 `FX_FILES` 순서로 파일 번호를 찾습니다.
+
 
 | 파일 | 하는 일 |
 |---|---|
@@ -21,6 +30,8 @@ python deploy_files.py       # out/ → 두 저장소의 files/ 복사 + excel-f
 | `gen_1b.py` | 1급 ② 분석작업 ③ 기타작업 |
 | `build.py` | 전부 굽기 |
 | `verify.py` | **검산** — 엑셀 COM 으로 열어 모범답안을 실제로 넣어 보고 ✔ 가 나오는지 확인 |
+| `export_web.js` · `gen_fx.py` · `verify_fx.py` | 웹 연습소와 같은 문제 → 범위별 엑셀 8개. 문제 하나 = 시트 하나, 표는 A1 부터(웹과 칸 주소 같음). 숨은 AA = 칸별 모범답안(끌어내린 모양), AB = 그 칸 맞음 여부 |
+| `gen_mock.py` · `verify_mock.py` | 실전 모의고사. 자동 채점 기준은 [채점표] 숨은 AA열~ (정렬·필터로 움직이지 않게 작업 시트가 아닌 곳에 둠) |
 | `deploy_files.py` | 두 저장소로 복사 + 내려받기 페이지 생성 (파일 설명·미션 목록이 여기 있음) |
 
 ## v2 의 짜임새
@@ -50,3 +61,7 @@ python deploy_files.py       # out/ → 두 저장소의 files/ 복사 + excel-f
    그냥 Enter 면 `#VALUE!` — 파일 안내문·따라하기에 그렇게 적어 두었습니다.
 6. 답 칸 너비가 좁으면 큰 숫자가 `########` 로 보입니다. 합계를 묻는 문제가 있는 시트는 답 열을 15 이상으로.
 7. 파일 이름은 **영문**으로 저장합니다(깃허브 Pages 주소 안전). 한글 이름은 `<a download="...">` 로 붙입니다.
+
+8. **엔진과 엑셀이 다르게 계산하던 것** — verify_fx 가 잡았다: `ROUND(-12.5,0)` 은 엑셀 -13(0에서 먼 쪽), 엔진은 -12 였음 /
+   `PROPER("LEE BADA")` 는 엑셀 "Lee Bada"(나머지 소문자), 엔진은 그대로였음. 둘 다 engine.js 에서 고쳤고 1급 저장소에도 복사.
+9. COM 으로 정렬을 검산할 때 `Range.Sort(Key1=…, Header=1)` 이름 인수는 엉뚱하게 먹는다 → `ws.Sort.SortFields` 를 쓴다.
