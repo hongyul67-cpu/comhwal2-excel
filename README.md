@@ -40,3 +40,9 @@ node -e "const fs=require('fs');global.window={};eval(fs.readFileSync('engine.js
 eval(fs.readFileSync('data/problems.js','utf8'));\
 window.XL_PROBLEMS.forEach(p=>console.log(p.id,JSON.stringify(window.XLEngine.evaluate(p.answer,p.grid))))"
 ```
+
+## 📖 먼저 배우기 · 그림 (2026-10-01)
+- 시작 화면 맨 위 「📖 먼저 배우기」 — 수업 슬라이드 원고(`lesson.js`)의 요점을 그림과 함께 보여 준다(정답을 다 보여 주는 화면).
+- 그림은 `figs.js` 한 곳(29장 · 카드 28장 중 26장). 공용 도우미는 `https://hongyul67-cpu.github.io/links/fig.js` (사본 두지 않음).
+- 수업 슬라이드 25장이 같은 그림을 쓴다. `slide:'q'` 그림은 퀴즈 답이 되는 이름표를 `?` 로 가린다.
+- 그림을 고칠 때: `cards` 는 `lesson.js` 의 제목과 글자까지 같아야 한다. 계산 결과는 엔진으로 다시 확인.
